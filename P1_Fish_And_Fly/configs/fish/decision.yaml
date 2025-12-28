@@ -1,0 +1,38 @@
+# This file contains configurations for the Fish decision logic configurations
+
+rules:
+  min_age: 5
+  min_conf: 0.4
+  allowed_classes:
+    - plastic
+    - metal
+    - rubber
+    - other
+
+reasoner:
+  class_weights:
+    plastic: 1.0
+    metal: 0.9
+    rubber: 0.7
+    other: 0.5
+  age_weight: 0.1
+  conf_weight: 0.5
+
+planner:
+  max_targets: 3
+  
+
+policy:
+  type: rule_based
+  max_tracks: 1
+
+priority:
+  class_weights:
+    plastic : 3.0
+    metal: 2.5
+    rubber: 2.0
+    cloth: 1.5
+    other: 1.0
+
+selection:
+  lock_enabled: true

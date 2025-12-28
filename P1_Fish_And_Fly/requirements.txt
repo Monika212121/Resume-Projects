@@ -1,0 +1,12 @@
+torch
+torchvision
+transformers
+ultralytics
+opencv-python
+pybullet
+numpy
+matplotlib
+pyyaml
+pathlib
+python-box
+ensure

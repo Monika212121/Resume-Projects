@@ -1,0 +1,15 @@
+# GLOBAL project config
+
+project:
+  name: FishAndFly
+  version: v1.0
+  device: auto                # auto | cpu | cuda
+
+paths:
+  dataset_root: datasets/
+  models_root: models/
+  runs_root: runs/
+
+runtime:
+  mode: inference             # training | inference
+  log_level: info

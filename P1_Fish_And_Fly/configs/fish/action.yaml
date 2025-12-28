@@ -1,0 +1,7 @@
+# This file contains configurations for the Fish action logic configurations
+
+mode: simulation
+
+motion:
+  max_speed: 0.5
+  turn_rate: 0.3

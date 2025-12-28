@@ -1,0 +1,9 @@
+# This file contains configurations for the Fish language model's configurations
+# Model: PaliGemma
+
+enabled: false
+
+vlm: 
+  model_name: PaliGemma
+  temperature: 0.2
+  max_tokens: 256

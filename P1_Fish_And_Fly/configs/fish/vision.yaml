@@ -1,0 +1,60 @@
+# This file contains configurations for the Fish vision model's configurations
+# Models used: YOLOv8n 
+
+
+class_names:
+  - metal
+  - plastic
+  - rubber
+  - cloth
+  - other
+
+
+training: 
+  model_name: yolov8n.pt
+  model_parameters:
+    data: data/yolo/garbage.yaml
+    imgsz: 640
+    epochs: 25
+    batch: 16
+    device: cpu
+    optimizer: Adam
+    hsv_h: 0.015
+    hsv_s: 0.7
+    hsv_v: 0.4
+    mosaic: 1.0
+    degrees: 5
+    shear: 2.0
+    flipud: 0.1
+    fliplr: 0.5
+    translate: 0.1
+    scale: 0.5
+    project: results/yolo                 # specify location to save trained YOLO model here 
+    name: seaclear_v1
+
+
+inference:
+  weights: results/yolo/seaclear_v1/weights/best.pt
+  conf: 0.4
+  imgsz: 640
+  verbose: false
+
+tracking:
+  enabled: true
+  tracker: botsort.yaml
+  persist: true
+  verbose: false
+
+
+aggregation:
+  max_history: 15
+  stable_age: 5                           # no. of frames an object is seen
+  max_idle_frames: 30                     # no. of frames an object is not seen
+
+
+io:
+  source: video                           # camera | video | sim
+  camera: 
+    device_id: 0
+  video:
+    path: data/test_footage/demo3.mp4
