@@ -1,0 +1,8 @@
+timestamp,track_id,class_name,final_state,lifecycle_state,priority_score,first_seen_frame,selected_at,completed_at,age,avg_confidence,failure_reason,ignore_reason
+2026-01-26T15:36:47.570051+00:00,1,other,success,success,1.2709876120090484,1,,,100,1.5,,
+2026-01-26T15:36:52.776718+00:00,2,other,success,success,1.2756026804447174,1,,,100,1.5,,
+2026-01-26T15:37:31.195134+00:00,3,other,success,success,1.2092188149690628,1,,,100,1.5,,
+2026-01-26T15:37:34.312559+00:00,4,other,success,success,1.2047663271427154,1,,,100,1.5,,
+2026-01-26T15:37:43.851139+00:00,5,other,success,success,1.2554283320903779,1,,,100,1.5,,
+2026-01-26T15:38:13.719494+00:00,6,other,success,success,1.2054032951593399,1,,,100,1.5,,
+2026-01-26T15:38:34.697772+00:00,7,other,success,success,1.2557711899280548,1,,,100,1.5,,

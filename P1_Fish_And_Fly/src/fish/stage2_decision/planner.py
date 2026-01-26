@@ -10,7 +10,7 @@ class ActionPlanner:
     """
 
     def __init__(self, planner_cfg):
-        self.max_targets = planner_cfg.max_targets
+        self.max_targets: int = planner_cfg.max_targets
 
 
     def build_action_intents(self, ranked_objects: List[Tuple[Optional[TrackedGarbage], float]], locked_track_id: Optional[int]) -> Optional[ActionIntent]:

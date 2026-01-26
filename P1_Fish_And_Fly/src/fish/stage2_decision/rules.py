@@ -16,13 +16,13 @@ class RuleFilter:
     Deterministic rules to eliminate bad detections
     """
     def __init__(self, rules_cfg):
-        self.min_age =  rules_cfg.min_age
-        self.min_conf = rules_cfg.min_conf
-        self.allowed_classes = rules_cfg.allowed_classes
+        self.min_age: int =  rules_cfg.min_age
+        self.min_conf: float = rules_cfg.min_conf
+        self.allowed_classes: List[str] = rules_cfg.allowed_classes
         
     
     # Applies HARD GATE(set of rules) to filter unstable detections, from the tracked aggregated detections from the Vision Module.
-    def hard_rules_apply(self, tracked_objects: List[TrackedGarbage]) -> List[TrackedGarbage]:
+    def apply_hard_rules(self, tracked_objects: List[TrackedGarbage]) -> List[TrackedGarbage]:
         """
         Docstring for hard_rules_apply
 
@@ -32,9 +32,9 @@ class RuleFilter:
         :return: List of filterd tracked garbage aggregations with the Hard Gate/Rule Filter. 
         :rtype: List[TrackedGarbage]
         """
-        logger.info(f"hard_rules_apply(): STARTS, initial detections: {len(tracked_objects)}")
+        logger.info(f"apply_hard_rules(): STARTS, initial detections: {len(tracked_objects)}")
 
-        filtered_objects = []
+        filtered_objects: List[TrackedGarbage] = []
         
         # Filtering the tracked aggregated list of detections.
         for object in tracked_objects:
@@ -54,6 +54,6 @@ class RuleFilter:
             # Adding the detections to the final list, which passes all the above 3 filters (rules).
             filtered_objects.append(object)
 
-        logger.info(f"hard_rules_apply(): ENDS, final filtered detections: {len(filtered_objects)}")
+        logger.info(f"apply_hard_rules(): ENDS, final filtered detections: {len(filtered_objects)}")
         return filtered_objects
     

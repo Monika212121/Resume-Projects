@@ -2,6 +2,136 @@
 
 mode: simulation
 
-motion:
-  max_speed: 0.5
-  turn_rate: 0.3
+mission:
+  start_point:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  end_point:
+    x: 100.0
+    y: 100.0
+    z: 0.0
+  hq_point:
+    x: 0.0
+    y: 20.0
+    z: 0.0
+
+  depths:
+    surface: 0.0
+    underwater: -8.0
+
+  navigation:
+    start_point:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    end_point:
+      x: 100.0
+      y: 100.0
+      z: 0.0
+    sweep_step: 5.0                       # meters between scan lines
+    reach_threshold: 5
+    speeds:  
+      surface: 10
+      underwater: 5
+
+  limits:
+    max_operation_retries: 3
+    max_mission_time_sec: 3600
+    max_target_loss_ignore: 10            # Maximum targets that can be ignored if LOST(failed to collect).
+
+  bin_manager:
+    bin_capacity: 10                          # in litres
+    alert_threshold: 0.8
+    
+# ---------------------------------------------------------------------------------------------------------------------------------------------------
+
+cost_model:
+  weights:
+    travel_time: 1.0
+    energy: 2.0
+    current: 1.5
+    drag: 1.2
+    risk: 3.0
+    uncertainty: 2.5
+
+  vehicle:
+    cruise_speed: 0.6        # m/s
+    drag_coeff: 0.9
+    avg_drag_force: 1.4
+
+  normalization:
+    max_distance: 100.0
+    max_energy: 500.0
+    max_current: 2.0
+    max_risk: 10.0
+    max_uncertainty: 5.0
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+d_points:
+  - x: 0.0
+    y: 0.0
+    z: 0.0
+
+  - x: 25.0
+    y: 0.0
+    z: 0.0
+
+  - x: 50.0
+    y: 0.0
+    z: 0.0
+
+  - x: 75.0
+    y: 0.0
+    z: 0.0
+
+  - x: 100.0
+    y: 0.0
+    z: 0.0
+
+  - x: 100.0
+    y: 25.0
+    z: 0.0
+
+  - x: 100.0
+    y: 50.0
+    z: 0.0
+
+  - x: 100.0
+    y: 75.0
+    z: 0.0
+
+  - x: 100.0
+    y: 100.0
+    z: 0.0
+    
+  - x: 75.0
+    y: 100.0
+    z: 0.0
+
+  - x: 50.0
+    y: 100.0
+    z: 0.0
+
+  - x: 25.0
+    y: 100.0
+    z: 0.0
+
+  - x: 0.0
+    y: 100.0
+    z: 0.0
+
+  - x: 0.0
+    y: 75.0
+    z: 0.0
+
+  - x: 0.0
+    y: 50.0
+    z: 0.0
+
+  - x: 0.0
+    y: 25.0
+    z: 0.0

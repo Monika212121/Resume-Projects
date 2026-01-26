@@ -1,4 +1,4 @@
-# DO them after MVP is created ad tested:
+# DO them after MVP is created and tested:
 
 ## 1.) TO increase accuracy in detection:
 
@@ -27,28 +27,38 @@ Mission rules”
 
 ### tommorow start here:
 
-✅ You are now building a real autonomous system, not a demo.
-Next best step (choose ONE):
+1. ) FOR TRAJECTORY/ COVERAGE LOGGING
 
-1️⃣ Implement Decision layer with lifecycle respect
-2️⃣ Add temporal priority smoothing
-3️⃣ Add multi-target scheduling
-4️⃣ Add failure recovery (SELECTED → STABLE)
-
+- show how to export trajectory to JSON
+- design the heatmap grid algorithm
+- help you color underwater vs surface
+- or tell you when exactly to refactor later
 
 
-# Next you should implement:
+2.) visualize world frame
 
-SELECTED → DONE / LOST feedback
+- Add exponential smoothing to world coordinates
+- Create a top-down mini-map
+- Help tune thresholds live
+- Prepare projection for PyBullet swap
 
-Action reports completion
 
-Planner releases lock
+3.) Decision pipeline,
 
-Aggregator updates lifecycle
+- In later versions, add a filter in Decision module to add a separate code logic.
 
-When you’re ready, say:
+- Reason: This is to consider distance of tracked garbages from fish, so that nearest garbage is attempted first.
 
-“Implement DONE / LOST feedback loop”
+- Right now, it is working fine but later, add this condition.
 
-You’re building something very real.
+
+# todo:
+
+NEXT (only one line)
+
+👉 If you want next: PyBullet fish movement + hydrodynamics
+or
+👉 Fly → Fish mission assignment protocol
+
+👉 Add mission replay + metrics
+

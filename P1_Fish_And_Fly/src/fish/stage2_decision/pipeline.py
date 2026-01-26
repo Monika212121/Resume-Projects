@@ -1,6 +1,7 @@
+from box import ConfigBox
 from typing import List, Optional, Tuple
-from src.common.logging import logger
 
+from src.common.logging import logger
 from src.fish.stage2_decision.filter import StableObjectFilter
 from src.fish.stage2_decision.rules import RuleFilter
 from src.fish.stage2_decision.reasoner import PriorityReasoner
@@ -22,7 +23,7 @@ class DecisionPipeline:
     - Emits lifecycle command
     """
 
-    def __init__(self, decision_cfg):
+    def __init__(self, decision_cfg: ConfigBox):
         self.filter = StableObjectFilter()
         self.rule_filter = RuleFilter(decision_cfg.rules)
         self.reasoner = PriorityReasoner(decision_cfg.reasoner)
@@ -30,14 +31,15 @@ class DecisionPipeline:
         self.selector = SelectionLock()
 
 
-    def run(self, tracked_agg_objects: List[TrackedGarbage]) -> Tuple[Optional[ActionIntent], Optional[LifeCycleCommand]]:
-        logger.info(f"DecisionPipeline -> run(): STARTS, tracked objects: {len(tracked_agg_objects)}")
+
+    def run(self, active_tracked_agg_objects: List[TrackedGarbage]) -> Tuple[Optional[ActionIntent], Optional[LifeCycleCommand]]:
+        logger.info(f"DecisionPipeline -> run(): STARTS, tracked objects: {len(active_tracked_agg_objects)}")
 
         # Step1: Filtering out only STABLE objects.
-        stable_tracked_objects = self.filter.filter_detections(tracked_agg_objects)
+        stable_tracked_objects = self.filter.filter_detections(active_tracked_agg_objects)
 
         # Step2: Applying Hard Gate / Rule-based Filtering
-        valid_objects = self.rule_filter.hard_rules_apply(stable_tracked_objects)
+        valid_objects = self.rule_filter.apply_hard_rules(stable_tracked_objects)
         if not valid_objects:
             logger.info(f"DecisionPipeline-> run(): No eligible objects")
             return None, None
@@ -49,7 +51,7 @@ class DecisionPipeline:
             logger.info(f"DecisionPipeline-> run(): No priority-scored objects")
             return None, None
         
-        # Step4: Sorting the (tracked object,priority_score) dictionary w.r.t priority score in descending order
+        # Step4: Sorting the (tracked object, priority_score) dictionary w.r.t priority score in descending order
         ranked_objects.sort(key = lambda x: x[1], reverse = True)                           
         logger.info(
             "DecisionPipeline -> Ranked objects: " + ", ".join(

@@ -1,16 +1,20 @@
 from typing import List
+from box import ConfigBox
+
 from src.common.logging import logger
-from src.fish.stage1_vision.entity import Detection, TrackedGarbage
-from src.fish.stage1_vision.detector import GarbageDetector
+
 from src.fish.stage1_vision.tracker import GarbageTracker
+from src.fish.stage1_vision.detector import GarbageDetector
 from src.fish.stage1_vision.aggregator import GarbageAggregator
+from src.fish.stage1_vision.entity import Detection, TrackedGarbage
+
 
 
 class VisionPipeline:
     """
     Stage1: Vision Pipeline
     """
-    def __init__(self, vision_cfg):
+    def __init__(self, vision_cfg: ConfigBox):
         self.infer_config = vision_cfg.inference
         self.tracker_config = vision_cfg.tracking
         self.class_names = vision_cfg.class_names
@@ -19,6 +23,8 @@ class VisionPipeline:
         self.detector = GarbageDetector(self.infer_config)
         self.tracker = GarbageTracker(self.tracker_config)
         self.aggregator = GarbageAggregator(self.aggregator_config)
+        logger.info(f"vision init(): vision cfg: {vision_cfg}")
+
 
 
     def run(self, frame) -> List[TrackedGarbage]:
@@ -34,7 +40,7 @@ class VisionPipeline:
             # Running Inference on this model
             results = garbage_tracker_obj.infer_yolo_model(model = detection_model, frame = frame, infer_cfg = self.infer_config)
             
-            detections: List[Detection] = []
+            detection_list: List[Detection] = []
 
             # Processing the results from YOLO inference(DETECTION + TRACKING), to create list of detections.
             for r in results:
@@ -49,15 +55,15 @@ class VisionPipeline:
                         track_id = int(box.id[0]) if box.id is not None else None
                     )
 
-                    detections.append(detection)
+                    detection_list.append(detection)
 
             # Creating tracked garbage aggregations, from the list of detections. 
-            aggregations = self.aggregator.create_garbage_aggregations(detections = detections)
+            active_aggregations = self.aggregator.create_garbage_aggregations(detections = detection_list)
 
             logger.info("VisionPipeline-> run(): ENDS")
-            return aggregations
+            return active_aggregations
 
 
         except Exception as e:
-            logger.info(f"Error occured in VisionPipeline-> run(): {e}")  
+            logger.info(f"Error occurred in VisionPipeline-> run(): {e}")  
             raise e

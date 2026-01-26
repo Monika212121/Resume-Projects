@@ -21,6 +21,7 @@ class TrackedState(Enum):
     SELECTED = "selected"
     DONE = "done"
     LOST = "lost"
+    UNATTEMPTED = "unattempted"
 
 @dataclass
 class TrackedGarbage:
@@ -28,9 +29,9 @@ class TrackedGarbage:
     class_id: int
     class_name: str
     avg_confidence: float
-    bbox: Tuple[int, int, int, int]
+    bbox: Tuple[int, int, int, int]     # (x1, y1, x2, y2)
     age: int                            # number of frames seen
     last_seen_frame: int
     state: TrackedState
-
+    fade_frames_remaining: int = 0      # UI related
 

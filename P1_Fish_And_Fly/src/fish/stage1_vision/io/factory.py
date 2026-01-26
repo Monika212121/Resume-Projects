@@ -1,4 +1,5 @@
 # Aim: This file build Vision Input, avoiding if-else chaos in main.py.
+from typing import Any
 
 from src.fish.stage1_vision.io.video import VideoInput
 from src.fish.stage1_vision.io.camera import CameraInput
@@ -6,7 +7,7 @@ from src.common.logging import logger
 
 
 # Returns the Vision Input object, after detecting the source of visual feed (CAMERA/ VIDEO/ SIMULATION).
-def build_vision_input(io_cfg):
+def build_vision_input(io_cfg: Any):
     try:
         logger.info(f"build_vision_input(): STARTS, vision source: {io_cfg.source}")
         if io_cfg.source == "camera":
