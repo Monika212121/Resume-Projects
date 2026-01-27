@@ -150,14 +150,10 @@ class PathNavigator:
                 logger.info(f"PathNavigator -> step(): Step cannot be taken now, reason is: pause-> {self.paused} or path_finished-> {self.path_is_finished()}")
                 return False
             
-            # for trajectory logging
-            self.step_count += 1
-
             # 2. Recognize the next target waypoint in the set path.
-            logger.info(f"PathNavigator -> step(), current index: {self.current_index}")
             target_waypoint = self.path[self.current_index]
             curr_pos = self.current_position
-            logger.info(f"PathNavigator -> step(), current position: {self.current_position}, target: {target_waypoint}")
+            logger.info(f"PathNavigator -> step(): current index: {self.current_index}, current position: {self.current_position}, target position: {target_waypoint}")
 
             # 3. Calculate direction vectors (3D)
             dx = target_waypoint.x - curr_pos.x
@@ -165,7 +161,7 @@ class PathNavigator:
             dz = target_waypoint.z - curr_pos.z
 
             distance = math.sqrt(dx*dx + dy*dy + dz*dz)
-            logger.info(f"distance btw curr and tar: {distance}")
+            logger.info(f"PathNavigator -> step(): Distance between current and target positions: {distance}")
 
             # 4. If already exactly at target waypoint
             if distance == 0.0:
@@ -181,7 +177,7 @@ class PathNavigator:
                 distance = math.sqrt(dx*dx + dy*dy + dz*dz)
                 logger.info(f"new distance btw curr and tar: {distance}")
 
-            # 5. Compute step distance, using formula `distance = speed * time`
+            # 5. Compute step distance, using formula [distance = speed * time]
             step_distance = self.curr_speed * dt
 
             # 6. Check if close enough or will overshoot -> Snap to target waypoint.
@@ -201,9 +197,17 @@ class PathNavigator:
             new_y = curr_pos.y + uy * step_distance
             new_z = curr_pos.z + uz * step_distance
 
-            self.current_position = Waypoint(new_x, new_y, new_z)
+            # 9. Move forward to the new position.
+            new_position = Waypoint(new_x, new_y, new_z)
+            step_success = self.move_to(target_point= new_position)
+            if not step_success:
+                logger.info(f"PathNavigator -> step(): ENDS, Stepping forward is FAILED, current position: {self.current_position}, new_position: {new_position}")
+                return False
 
+            # 10. Log the new position for trajectory visualization.
+            self.step_count += 1                                            # Maintaining step count for trajectory logging.
             self._log_trajectory_point()
+          
             logger.info(f"PathNavigator -> step(): ENDS, incremented to new_position: {self.current_position}")
             return True
 

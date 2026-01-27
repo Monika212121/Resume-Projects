@@ -6,7 +6,7 @@ from src.common.alerts_and_notifications.notification_types import NotificationT
 
 
 class AlertNotifier:
-    def __ini__(self):
+    def __init__(self):
         pass
 
 
@@ -15,4 +15,4 @@ class AlertNotifier:
 
 
     def raise_notification(self, notification_type: NotificationType, message: str, metadata: Optional[Dict[Any, Any]]):
-        logger.warning(f"[ALERT] {notification_type.value} | {message} | meta = {metadata}")
+        logger.warning(f"[NOTIFICATION] {notification_type.value} | {message} | meta = {metadata}")
