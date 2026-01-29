@@ -32,8 +32,8 @@ mission:
     sweep_step: 5.0                       # meters between scan lines
     reach_threshold: 5
     speeds:  
-      surface: 10
-      underwater: 5
+      surface: 1.2
+      underwater: 0.6
 
   limits:
     max_operation_retries: 3

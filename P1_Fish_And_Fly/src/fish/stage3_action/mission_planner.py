@@ -2,10 +2,10 @@ import time
 from typing import Optional, Dict, Any
 
 from src.common.logging import logger
+from src.common.projection.entity import WorldObject
 from src.common.alerts_and_notifications.notifier import AlertNotifier
 from src.common.alerts_and_notifications.alert_types import AlertType, ErrorType
 from src.common.alerts_and_notifications.notification_types import NotificationType
-from src.common.visualization.world_projection import WorldObject
 
 from src.fish.stage2_decision.entity import ActionIntent
 from src.fish.stage3_action.bin_manager import BinManager

@@ -1,15 +1,15 @@
 import cv2
 import numpy as np
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from src.common.logging import logger
-from src.common.visualization.video_overlay import GarbageVideoOverlay
+from src.common.visualization.entity import VisualizationEntity
 from src.common.visualization.adapter import VisualizationAdapter
-from src.common.visualization.entity import VisualizationEntity, WorldObject
-from src.common.visualization.world_projection import CameraToWorldProjector
+from src.common.visualization.video_overlay import GarbageVideoOverlay
+from src.common.projection.entity import WorldObject
+from src.common.projection.convert_camera_to_world import CameraToWorldProjector
 
 from src.fish.stage1_vision.entity import TrackedGarbage
-from src.fish.stage2_decision.entity import ActionIntent
 
 
 
@@ -27,47 +27,38 @@ class Visualizer:
 
 
 
-    def visualize_objects(self, frame: np.ndarray, active_objects: List[TrackedGarbage], action_intent: Optional[ActionIntent]) -> Optional[WorldObject]:
+    def visualize_objects(self, frame: np.ndarray, active_objects: List[TrackedGarbage], selected_world_obj: Optional[WorldObject]) -> None:
         """
         Visualize tracked objects, selection, grasp threshold and world projection.
-        Returns projected WorldObject if available.
         """
         logger.info("Visualizer -> visualize_objects(): STARTS")
-        resized_bbox: Optional[Tuple[int,int,int,int]] = None
 
-        # 1. Resize frame
+        # 1. Resize original frame to desired dimension
         frame = cv2.resize(frame, (self.FRAME_WIDTH, self.FRAME_HEIGHT))
         display_frame = frame.copy()
 
+        # Return the normal resized frame if there is no active/selected object
+        if len(active_objects)==0 or selected_world_obj is None:
+            logger.info("Visualizer -> visualize_objects(): ENDS, There are no active objects or selected world object")
+            cv2.imshow("My Fish machine underwater garbage tracker", display_frame)
+            return
+
         # 2. Build visualization entities (ALL objects)
-        viz_entity = self.viz_adapter.build(tracked_objects= active_objects, action_intent=action_intent)
+        viz_entity = self.viz_adapter.build(active_objects= active_objects, selected_track_id = selected_world_obj.track_id)
 
-        # 3. Project world coordinates ONLY if action exists
-        world_object: Optional[WorldObject] = None
-        if action_intent:
-            world_object = self.projector.project(action_intent)
+        # 3. Resize Bounding box of the selected object.
+        x1, y1, x2, y2 = selected_world_obj.bbox
 
-            logger.info(
-                f"[PROJECTION] id={action_intent.track_id} "
-                f"bbox={action_intent.bbox} "
-                f"world_x={world_object.x:.2f} "
-                f"world_y={world_object.y:.2f} "
-                f"dist={world_object.distance:.4f}"
-            )
+        scale_x = self.FRAME_WIDTH / self.SRC_WIDTH
+        scale_y = self.FRAME_HEIGHT / self.SRC_HEIGHT
 
-            # 4. Resize Bounding box of selected object.
-            x1, y1, x2, y2 = action_intent.bbox
-            
-            scale_x = self.FRAME_WIDTH / self.SRC_WIDTH
-            scale_y = self.FRAME_HEIGHT / self.SRC_HEIGHT
+        resized_bbox = (int(x1 * scale_x), int(y1 * scale_y), int(x2 * scale_x), int(y2 * scale_y))
 
-            resized_bbox = (int(x1 * scale_x), int(y1 * scale_y), int(x2 * scale_x), int(y2 * scale_y))
-
-        # 5. Draw everything (pure visualization)
-        display_frame = self.overlay_obj.draw(frame= display_frame, viz_entity= viz_entity, resized_bbox= resized_bbox, world_object= world_object)
+        # 4. Draw everything (pure visualization)
+        display_frame = self.overlay_obj.draw(frame= display_frame, viz_entity= viz_entity, resized_bbox= resized_bbox, sel_world_object= selected_world_obj)
 
         # 5. Show frame
         cv2.imshow("My Fish machine underwater garbage tracker", display_frame)
 
         logger.info("Visualizer -> visualize_objects(): ENDS")
-        return world_object
+        return

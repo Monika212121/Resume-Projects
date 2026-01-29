@@ -2,13 +2,14 @@ from box import ConfigBox
 from typing import List, Optional, Tuple
 
 from src.common.logging import logger
+
+from src.fish.stage1_vision.entity import TrackedGarbage
+
 from src.fish.stage2_decision.filter import StableObjectFilter
 from src.fish.stage2_decision.rules import RuleFilter
 from src.fish.stage2_decision.reasoner import PriorityReasoner
 from src.fish.stage2_decision.planner import ActionPlanner
 from src.fish.stage2_decision.selector import SelectionLock
-
-from src.fish.stage1_vision.entity import TrackedGarbage
 from src.fish.stage2_decision.entity import ActionIntent
 from src.fish.stage2_decision.command import LifeCycleCommand
 
@@ -33,7 +34,12 @@ class DecisionPipeline:
 
 
     def run(self, active_tracked_agg_objects: List[TrackedGarbage]) -> Tuple[Optional[ActionIntent], Optional[LifeCycleCommand]]:
-        logger.info(f"DecisionPipeline -> run(): STARTS, tracked objects: {len(active_tracked_agg_objects)}")
+        logger.info(f"DecisionPipeline -> run(): STARTS, active_objects: {len(active_tracked_agg_objects)}")
+
+        # If there is no active objects present, then no object can be selected.
+        if len(active_tracked_agg_objects) == 0:              
+            logger.info(f"DecisionPipeline-> run(): No tracked active objects are received from the Vision module")
+            return None, None
 
         # Step1: Filtering out only STABLE objects.
         stable_tracked_objects = self.filter.filter_detections(active_tracked_agg_objects)

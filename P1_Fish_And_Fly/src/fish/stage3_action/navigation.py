@@ -6,7 +6,7 @@ import math
 from typing import List, Dict, Any
 
 from src.common.logging import logger
-from src.common.visualization.world_projection import WorldObject
+from src.common.projection.entity import WorldObject
 
 from src.fish.stage3_action.entity import Waypoint, Navigation, Speeds
 

@@ -32,15 +32,11 @@ class VisualizationAdapter:
 
 
 
-    def build(
-        self,
-        tracked_objects: List[TrackedGarbage],
-        action_intent: Optional[ActionIntent]
-    ) -> VisualizationEntity:
+    def build(self, active_objects: List[TrackedGarbage], selected_track_id: int) -> VisualizationEntity:
 
         visuals: List[VisualObject] = []
 
-        for obj in tracked_objects:
+        for obj in active_objects:
             x1, y1, x2, y2 = obj.bbox
 
             # SCALE bbox from source frame -> resized frame
@@ -72,7 +68,7 @@ class VisualizationAdapter:
 
         visual_entities =  VisualizationEntity(
             objects=visuals,
-            selected_id=action_intent.track_id if action_intent else None,
+            selected_id=selected_track_id,
             action_label=None,
             grasp_threshold= 0.08
         )

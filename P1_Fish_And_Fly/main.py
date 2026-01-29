@@ -5,6 +5,7 @@ import time
 
 from src.common.logging import logger
 from src.common.config.configuration import ConfigurationManager
+from src.common.projection.world_projection import WorldProjector
 from src.common.visualization.visualizer import Visualizer
 
 from src.fish.stage1_vision.io.factory import build_vision_input
@@ -50,6 +51,7 @@ def main():
             dump_location_cfg = dump_location_config
         )
 
+        world_projector_obj = WorldProjector()
         visualization_obj = Visualizer()
         result_logger = OutcomeLogger()
 
@@ -80,9 +82,11 @@ def main():
             # REASONING | DECISION: Getting 1 action intent (Decision -> Action module) and select command (Decision -> Vision module) 
             action_intent, select_command = decision_pipeline_obj.run(active_tracked_agg_objects)
 
-            # VISUALIZATION: Create the labelled view for the tracked detections.
-            # Coverts action_intent (image frame) -> world object (world frame). 
-            world_object = visualization_obj.visualize_objects(frame = frame, active_objects= active_tracked_agg_objects, action_intent= action_intent)
+            # PROJECTOR: Coverts active_objects(image frame) -> world objects(world frame)
+            world_objects, selected_world_object = world_projector_obj.transform_to_world_frame(active_objects= active_tracked_agg_objects, action_intent= action_intent)
+
+            # VISUALIZATION: Create the labelled view for the tracked detections. 
+            visualization_obj.visualize_objects(frame = frame, active_objects= active_tracked_agg_objects, selected_world_obj= selected_world_object)
             
             if cv2.waitKey(1) & 0xFF == ord('q'):                       # Exit when 'q' is pressed
                 break 
@@ -106,8 +110,8 @@ def main():
                 navigation_only = True
 
             # If world object is not created.
-            if world_object is None:
-                logger.info(f"No world object is created")
+            if selected_world_object is None:
+                logger.info(f"No world object is created for the action intent")
                 navigation_only = True
 
             # Emitting select command(from Decision -> Vision Aggregator) to update the object's current status as SELECTED.
@@ -127,7 +131,7 @@ def main():
                 logger.info(f"Fish machine will only perform Navigation in this iteration")
 
             # ACTION: Execute the action intent(from Decision -> Action) to collect the target garbage, following the mission planner.
-            action_feedback = mission_planner_obj.tick(action_intent, world_object)       
+            action_feedback = mission_planner_obj.tick(action_intent, selected_world_object)       
             if action_intent is None:
                 logger.info("No action intent is present")
                 continue

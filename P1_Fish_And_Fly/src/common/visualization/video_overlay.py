@@ -5,7 +5,8 @@ import cv2
 import numpy as np
 from typing import Optional, Tuple
 
-from src.common.visualization.entity import VisualizationEntity, VisualObject, WorldObject
+from src.common.visualization.entity import VisualizationEntity, VisualObject
+from src.common.projection.entity import WorldObject
 
 
 
@@ -21,7 +22,7 @@ class GarbageVideoOverlay:
         self.threshold_distance = 0.08
 
 
-    def draw(self, frame: np.ndarray, viz_entity: VisualizationEntity, resized_bbox: Optional[Tuple[int, int, int, int]], world_object: Optional[WorldObject]) -> np.ndarray:
+    def draw(self, frame: np.ndarray, viz_entity: VisualizationEntity, resized_bbox: Optional[Tuple[int, int, int, int]], sel_world_object: WorldObject) -> np.ndarray:
         """
         Draw all visual objects and selection highlight.
         """
@@ -38,8 +39,8 @@ class GarbageVideoOverlay:
         frame = self._draw_grasp_threshold(frame = frame, threshold_distance = self.threshold_distance)
 
         # 4. Draw world coords(world_x, world_y) (YELLOW)
-        if resized_bbox and world_object:
-            frame = self._draw_world_coords(frame, resized_bbox, world_object)
+        if resized_bbox and sel_world_object:
+            frame = self._draw_world_coords(frame, resized_bbox, sel_world_object)
 
         return frame
 
