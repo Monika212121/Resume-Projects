@@ -4,6 +4,8 @@
 from typing import Tuple
 from src.common.logging import logger
 from src.common.projection.entity import WorldObject
+from src.fish.stage1_vision.entity import TrackedGarbage
+from src.fish.stage3_action.entity import Waypoint
 
 
 
@@ -26,7 +28,7 @@ class CameraToWorldProjector:
 
     
     
-    def project_image_to_world_frame(self, track_id: int, bbox: Tuple[int, int, int, int]) -> WorldObject:
+    def project_image_to_world_frame(self, tracked_obj: TrackedGarbage) -> WorldObject:
         """
         Project a bounding box into robot-centric coordinates.
 
@@ -41,9 +43,9 @@ class CameraToWorldProjector:
         :rtype: WorldObject
         """
         try:
-            logger.info(f"CameraToWorldProjector -> project_image_to_world_frame(): STARTS, track_id: {track_id}")
+            logger.info(f"CameraToWorldProjector -> project_image_to_world_frame(): STARTS, track_id: {tracked_obj.track_id}")
 
-            x1, y1, x2, y2 = bbox
+            x1, y1, x2, y2 = tracked_obj.bbox
 
             # 1. Calculate the BBox centre (image frame)
             cx = (x1 + x2) / 2.0
@@ -64,12 +66,11 @@ class CameraToWorldProjector:
             world_z: float = 0.0
 
             world_object = WorldObject(
-                track_id = track_id,
-                x = world_x,
-                y = world_y,
-                z = world_z,
+                track_id = tracked_obj.track_id,
+                class_id = tracked_obj.class_id,
+                position= Waypoint(world_x, world_y, world_z),
                 distance = distance,
-                bbox = bbox 
+                bbox = tracked_obj.bbox 
             )
 
             logger.info(f"CameraToWorldProjector -> project_image_to_world_frame(): ENDS")

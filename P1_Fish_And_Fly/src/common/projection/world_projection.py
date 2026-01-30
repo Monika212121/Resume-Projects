@@ -56,7 +56,7 @@ class WorldProjector:
             for obj in active_objects:
 
                 # Project the image dimension(action_intent.bbox) -> world dimension(x,y,z) relative to the Fish's position
-                world_obj = self.projector.project_image_to_world_frame(obj.track_id, obj.bbox)
+                world_obj = self.projector.project_image_to_world_frame(obj)
 
                 # Creating dict{track_id, WorldObject}
                 world_objects[obj.track_id] = world_obj

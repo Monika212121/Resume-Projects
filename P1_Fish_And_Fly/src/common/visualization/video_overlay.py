@@ -111,7 +111,7 @@ class GarbageVideoOverlay:
         cx = int((x1 + x2) / 2)
         cy = int((y1 + y2) / 2)
 
-        text = f"x={world_obj.x:.2f}, y={world_obj.y:.3f}"
+        text = f"x={world_obj.position.x:.2f}, y={world_obj.position.y:.3f}"
 
         cv2.putText(frame, text, (cx, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)                                 # YELLOW
         return frame
