@@ -40,6 +40,9 @@ class Visualizer:
         # Return the normal resized frame if there is no active/selected object
         if len(active_objects)==0 or selected_world_obj is None:
             logger.info("Visualizer -> visualize_objects(): ENDS, There are no active objects or selected world object")
+
+            #  Always draw grasp threshold line for consistency
+            display_frame = self.overlay_obj._draw_grasp_threshold(frame = frame, threshold_distance = self.overlay_obj.threshold_distance)
             cv2.imshow("My Fish machine underwater garbage tracker", display_frame)
             return
 

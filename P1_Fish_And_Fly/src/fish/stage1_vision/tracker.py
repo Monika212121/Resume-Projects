@@ -20,11 +20,11 @@ class GarbageTracker:
         If tracking_enabled = true, tracking happens, else tracking does not happen, just detection
         """
         try: 
-            logger.info("infer_yolo_model(): STARTS")
+            #logger.info("infer_yolo_model(): STARTS")
 
             model_tracker_cfg = self.tracker_cfg
-            logger.info(f"infer_yolo_model(): INFERENCE CONFIGURATIONS: {infer_cfg}")
-            logger.info(f"infer_yolo_model(): TRACKING CONFIGURATIONS: {model_tracker_cfg}")
+            #logger.info(f"infer_yolo_model(): INFERENCE CONFIGURATIONS: {infer_cfg}")
+            #logger.info(f"infer_yolo_model(): TRACKING CONFIGURATIONS: {model_tracker_cfg}")
 
             # CASE1: When tracking is enabled : (DETECTION + TRACKING)
             if self.tracking_enabled:
@@ -37,7 +37,7 @@ class GarbageTracker:
                     verbose = model_tracker_cfg.verbose
                 )
 
-                logger.info("infer_yolo_model(): Detection is done with Tracking")
+                #logger.info("infer_yolo_model(): Detection is done with Tracking")
 
             # CASE2: When tracking is not enabled : (ONLY DETECTION)
             else:
@@ -48,10 +48,10 @@ class GarbageTracker:
                     verbose = infer_cfg.verbose
                 )
 
-                logger.info("infer_yolo_model(): Detection is done without Tracking")
+                #logger.info("infer_yolo_model(): Detection is done without Tracking")
                 
 
-            logger.info("infer_yolo_model(): ENDS")
+            #logger.info("infer_yolo_model(): ENDS")
             return results
 
 

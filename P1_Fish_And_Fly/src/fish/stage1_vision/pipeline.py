@@ -23,7 +23,7 @@ class VisionPipeline:
         self.detector = GarbageDetector(self.infer_config)
         self.tracker = GarbageTracker(self.tracker_config)
         self.aggregator = GarbageAggregator(self.aggregator_config)
-        logger.info(f"vision init(): vision cfg: {vision_cfg}")
+        #logger.info(f"vision init(): vision cfg: {vision_cfg}")
 
 
 

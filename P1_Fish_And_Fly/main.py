@@ -36,7 +36,10 @@ def main():
         navigation_config = fish_cfg_mg.get_navigation_config()
         cost_model_config = fish_cfg_mg.get_cost_model_config()
         dump_location_config = fish_cfg_mg.get_dump_location_config()
+        
+        visualizer_config = fish_cfg_mg.get_perception_visualization_config()
 
+        simulation_config = fish_cfg_mg.get_simulation_visualization_config()
 
         # Instantiating the pipelines
         vision_pipeline_obj = VisionPipeline(vision_cfg = vision_config)
@@ -48,7 +51,8 @@ def main():
             bin_cfg = bin_config,
             navigation_cfg = navigation_config,
             cost_model_cfg = cost_model_config,
-            dump_location_cfg = dump_location_config
+            dump_location_cfg = dump_location_config,
+            simulation_cfg= simulation_config
         )
 
         world_projector_obj = WorldProjector()
@@ -82,17 +86,18 @@ def main():
             # REASONING | DECISION: Getting 1 action intent (Decision -> Action module) and select command (Decision -> Vision module) 
             action_intent, select_command = decision_pipeline_obj.run(active_tracked_agg_objects)
 
-            # PROJECTOR: Coverts active_objects(image frame) -> world objects(world frame)
+            # PROJECTOR: Coverts active_objects(image frame) -> world objects(world frame) and provide transformed selected object
             world_objects, selected_world_object = world_projector_obj.transform_to_world_frame(active_objects= active_tracked_agg_objects, action_intent= action_intent)
 
             # VISUALIZATION: Create the labelled view for the tracked detections. 
-            visualization_obj.visualize_objects(frame = frame, active_objects= active_tracked_agg_objects, selected_world_obj= selected_world_object)
+            if visualizer_config.enabled_gui:
+                visualization_obj.visualize_objects(frame = frame, active_objects= active_tracked_agg_objects, selected_world_obj= selected_world_object)
             
-            if cv2.waitKey(1) & 0xFF == ord('q'):                       # Exit when 'q' is pressed
-                break 
+                if cv2.waitKey(1) & 0xFF == ord('q'):                       # Exit when 'q' is pressed
+                    break 
 
             # IMPORTANT CHECKS FOR PIPELINE:
-            navigation_only: bool = False                               # refer ACTION_NOTES.md (4)
+            navigation_only: bool = False                                                                   # refer ACTION_NOTES.md (4)
 
             # If active objects are not in frame.
             if len(active_tracked_agg_objects) == 0:
@@ -126,12 +131,13 @@ def main():
                 logger.info("Action is not allowed, so Action module is not triggered")
                 continue
 
-            # Confirmation of the nature of task Fish is performing.                                     # refer ACTION_NOTE.md(8)
+            # Confirmation of the nature of task Fish is performing.                                        # refer ACTION_NOTE.md(8)
             if navigation_only:
                 logger.info(f"Fish machine will only perform Navigation in this iteration")
 
             # ACTION: Execute the action intent(from Decision -> Action) to collect the target garbage, following the mission planner.
-            action_feedback = mission_planner_obj.tick(action_intent, selected_world_object)       
+            # SIMULATION: Action and Simulation are connected together and run parallely.
+            action_feedback = mission_planner_obj.tick(action_intent, selected_world_object, world_objects)       
             if action_intent is None:
                 logger.info("No action intent is present")
                 continue

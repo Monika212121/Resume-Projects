@@ -62,3 +62,13 @@ or
 
 👉 Add mission replay + metrics
 
+
+
+
+design the log schema cleanly
+
+write a replay_simulation.py skeleton
+
+show how to sync videos
+
+help storyboard the demo

@@ -3,8 +3,9 @@ from box import ConfigBox
 from src.common.config.config_mapper import parse_waypoint, parse_waypoint_list
 from src.common.config.config_loader import load_machine_config
 
+from src.fish.stage1_vision.entity import Visualization
 from src.fish.stage3_action.entity import Mission, Bin, Navigation, CostWeights, VehicleModel, NormalizationLimits, CostModel, DumpLocation
-
+from src.fish.stage5_simulation.entity import Simulation
 
 class ConfigurationManager():
     """
@@ -156,3 +157,24 @@ class ConfigurationManager():
         )
 
         return cost_model_config
+
+
+    def get_perception_visualization_config(self) -> Visualization:
+        cfg = self._config.vision.visualization
+
+        visualizer_config = Visualization(
+            enabled_gui= cfg.enabled_gui,
+        )
+
+        return visualizer_config    
+
+
+
+    def get_simulation_visualization_config(self) -> Simulation:
+        cfg = self._config.simulation.visualization
+
+        simulation_config = Simulation(
+            enabled_gui= cfg.enabled_gui,
+        )
+
+        return simulation_config

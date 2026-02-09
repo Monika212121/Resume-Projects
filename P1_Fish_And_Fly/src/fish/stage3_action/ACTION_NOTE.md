@@ -255,3 +255,27 @@ Test case1: If action_track_id = valid, means an object is already locked in a f
 - Garbage collection
 
 - Navigation
+
+
+9.) In case of approach to last waypoint of a set path, if Fish machine is too close to the last waypoint, then advancing index can raise `error: out of index`.
+
+- So, to avoid this error, I added a check of path_is_finsihed(), and returned the last target waypoint as the return new poisition.
+
+- The control will traverse to the tick(), where path_is_finished() check is present to trigger advance phase of the mission and set another path.
+
+
+10.) Perception(image Frame) → World Frame→ Mission Space Projection (x,y=same, z=depth)
+
+- Perception outputs 2D bounding boxes in the camera frame.
+- These are transformed into world-frame WorldObjects using perception-to-world projection.
+- The resulting world objects initially have z = 0 (surface reference).
+- During mission execution, the MissionPlanner injects the correct z value based on the current phase:
+    - SURFACE → z = depths.surface
+    - UNDERWATER → z = depths.underwater
+
+This ensures:
+- In Navigation: Correct 3D distance computation between the fish and garbage,
+- In Simulation: Accurate simulation mirroring of objects at the active mission depth,
+- Clean separation between perception space, world frame, and mission space.
+
+Depth is treated as a mission-level attribute, not a perception property.

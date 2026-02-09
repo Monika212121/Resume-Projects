@@ -41,40 +41,39 @@ class UnloadGarbageBehavior:
             self.mission_checkpoint = checkpoint
             self.notifier.raise_alert(AlertType.BIN_FULL, message= "Unloading phase started", metadata= {"mission_checkpoint": self.mission_checkpoint})
 
+            curr_pos = self.mission_checkpoint.last_position
+
             # 2. Finding the best dump point after calculating cost for all the d-points.          
-            best_docking_point = min(self.d_points, key= lambda d_pt : self.cost_calculator.calculate_docking_cost(target_pos = d_pt,
-                                                                                                                    current_pos = self.mission_checkpoint.last_position,
-                                                                                                                    env = self.env_model))
-         
+            best_docking_point = min(self.d_points, key= lambda d_pt : self.cost_calculator.calculate_docking_cost(target_pos = d_pt, current_pos = curr_pos, env = self.env_model))                                                                                                
             logger.info(f"unload_garbage(): Best_docking_point is : {best_docking_point}")
 
             # 3. Approach the chosen best d_point. 
-            curr_pos = self.mission_checkpoint.last_position
-            curr_level = curr_pos.z
+            curr_operation_depth = curr_pos.z
 
             # Case1: If currently in surface level, directly approach dump point.
-            if curr_level == self.depths.surface:
-                reached_D = self.navigator.move_to(target_point= best_docking_point)
+            if curr_operation_depth == self.depths.surface:
+                reached_D = self.navigator.move_to(target_position= best_docking_point)
                 if not reached_D:
                     logger.info(f"unload_garbage(): Error occurred in reaching the best d_point.")
                     return False
 
             # Case2: If currently in underwater, first ascend to the surface level, then approach the dump point.
             else: 
-                # first move up vertically to the surface level.
+                # First move up vertically to the surface level.
                 surface_current_pos = Waypoint(curr_pos.x, curr_pos.y, self.depths.surface)
 
-                reached_up = self.navigator.move_to(target_point= surface_current_pos)
+                reached_up = self.navigator.move_to(target_position= surface_current_pos)
                 if not reached_up:
                     logger.info(f"unload_garbage(): Error occurred in reaching the water surface level.")
                     return False
 
-                # then move towards the best d_point.
-                reached_D = self.navigator.move_to(target_point= best_docking_point)
+                # Then move towards the best d_point.
+                reached_D = self.navigator.move_to(target_position= best_docking_point)
                 if not reached_D:
                     logger.info(f"unload_garbage(): Error occurred in reaching the best d_point.")
                     return False
                 
+            # TODO: Return from best docking point to the resume point.
             
             logger.info(f"unload_garbage(): ENDS")
             self.notifier.raise_notification(NotificationType.GARBAGE_UNLOADING_ENDED, message= "unloading phase ended", metadata= {"resume_waypoint": self.mission_checkpoint.last_position})

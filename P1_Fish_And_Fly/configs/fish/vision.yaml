@@ -58,3 +58,7 @@ io:
     device_id: 0
   video:
     path: data/test_footage/demo5.mp4
+
+
+visualization:
+  enabled_gui: false
