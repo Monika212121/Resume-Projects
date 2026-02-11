@@ -16,6 +16,7 @@ class SelectionLock:
     """
     def __init__(self):
         self.active_track_id : Optional[int] = None
+        self.selection_counter = 1
 
 
     def select_target(self, ranked_objects: List[Tuple[Optional[TrackedGarbage], float]]) -> Optional[LifeCycleCommand]:
@@ -28,32 +29,57 @@ class SelectionLock:
         :rtype: LifeCycleCommand | None
         """
         logger.info(f"SelectionLock -> select_target(): STARTS, ranked objects: {len(ranked_objects)}")
-
-        # If a target is already locked.
-        if self.active_track_id:
-            logger.info(f"An object is already locked of track_id: {self.active_track_id}.")
-            return None
         
-        # If there is no tracked stable objects in frame.
+        # 1. If there is no tracked stable objects in frame.
         if len(ranked_objects) == 0:
             logger.info("No stable candidates present now")
             return None
 
-        # Selecting highest priority object.
+        # 2. Selecting highest priority object.
         selected_object, _ = ranked_objects[0]
         if selected_object is None:
             return None
         
-        # Locking the highest priority object as target.
-        self.active_track_id = selected_object.track_id
+        # 3. Creating the selection command, locking the suitable target
 
-        # New command generation.
-        command = LifeCycleCommand(                                     
-            action = LifeCycleAction.SELECT,
-            track_id = self.active_track_id
-        )
+        # Case1: OLD TARGET: If a target is already locked
+        if self.active_track_id:
 
-        logger.info(f"SelectionLock -> select_target(): ENDS, COMMAND: {command}")
+            # CaseA: If the locked target is still present in current frame, then reselect it again 
+            if self.active_track_id == selected_object.track_id:
+                self.selection_counter += 1                                                                 # give another chance for its collection                                                  
+                command = LifeCycleCommand(                                     
+                    action = LifeCycleAction.SELECT,
+                    track_id = self.active_track_id,
+                    selection_count= self.selection_counter
+                )
+
+            # CaseB: If the locked target is not present, in current frame anymore, then mark it as LOST and release it
+            else:
+                command = LifeCycleCommand(                                     
+                    action = LifeCycleAction.LOST,
+                    track_id = self.active_track_id,
+                    selection_count= self.selection_counter
+                )
+
+                # Release the locked target, as it is LOST
+                self.active_track_id = None
+
+
+        # Case2: NEW TARGET: If no target is locked at present
+        else:
+            # Locking the highest priority object as target
+            self.active_track_id = selected_object.track_id
+            self.selection_counter = 1
+
+            # New command generation.
+            command = LifeCycleCommand(                                     
+                action = LifeCycleAction.SELECT,
+                track_id = self.active_track_id,
+                selection_count= self.selection_counter
+            )
+
+        logger.info(f"SelectionLock -> select_target(): ENDS, SELECT COMMAND: {command}")
         return command
     
 
@@ -65,7 +91,7 @@ class SelectionLock:
         """
         logger.info(f"SelectorLock -> release(): STARTS, before releasing track_id = {self.active_track_id}")
 
-        self.active_track_id = None                                     # triggered only when action_feedback status = SUCCESS / FAILED
+        self.active_track_id = None                                                                         # triggered only when action_feedback status = SUCCESS / FAILED
 
         logger.info(f"SelectorLock -> release(): ENDS, after releasing track_id = {self.active_track_id}")
         return
@@ -110,21 +136,24 @@ class SelectionLock:
         if feedback.status == ActionStatus.SUCCESS:
             command = LifeCycleCommand(
                 action = LifeCycleAction.MARK_DONE,
-                track_id = feedback.track_id
+                track_id = feedback.track_id,
+                selection_count= self.selection_counter
             )
         
         # Case2: TARGET ATTEMPTED: When locked object is not collected (FAILED).
         elif feedback.status == ActionStatus.FAILED:
             command = LifeCycleCommand(
                 action = LifeCycleAction.FAILED,
-                track_id = feedback.track_id
+                track_id = feedback.track_id,
+                selection_count= self.selection_counter
             )
         
         # Case3: TARGET UNATTEMPTED: When objects are tracked at a far location (MOVED_FORWARD / NONE).           
         else:
             command = LifeCycleCommand(
                 action = LifeCycleAction.UNATTEMPTED,
-                track_id = feedback.track_id
+                track_id = feedback.track_id,
+                selection_count= self.selection_counter
             )
             logger.info(f"The locked target is far from Fish machine and hence UNATTEMPTED.")
 

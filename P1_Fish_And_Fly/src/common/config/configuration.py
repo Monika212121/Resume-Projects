@@ -7,6 +7,10 @@ from src.fish.stage1_vision.entity import Visualization
 from src.fish.stage3_action.entity import Mission, Bin, Navigation, CostWeights, VehicleModel, NormalizationLimits, CostModel, DumpLocation
 from src.fish.stage5_simulation.entity import Simulation
 
+from src.fly.stage2_action.entity import MonitorConfig
+from src.fly.stage2_action.entity import FlightControllerConfig
+
+
 class ConfigurationManager():
     """
     Central Configuration Mananger for Fish/ Fly
@@ -19,6 +23,7 @@ class ConfigurationManager():
     def get_all_config(self) -> ConfigBox:
         return self._config
     
+    # ******************************************************FISH CONFIGURATION*************************************************
     
     #-----------------------------------------VISION CONFIGURATIONS-------------------------------------------------------------
     
@@ -158,6 +163,8 @@ class ConfigurationManager():
 
         return cost_model_config
 
+    
+    #-----------------------------------------VISUALIZATION CONFIGURATIONS---------------------------------------------------------------
 
     def get_perception_visualization_config(self) -> Visualization:
         cfg = self._config.vision.visualization
@@ -168,6 +175,8 @@ class ConfigurationManager():
 
         return visualizer_config    
 
+    
+    #-----------------------------------------SIMULATION CONFIGURATIONS---------------------------------------------------------------
 
 
     def get_simulation_visualization_config(self) -> Simulation:
@@ -178,3 +187,30 @@ class ConfigurationManager():
         )
 
         return simulation_config
+    
+
+
+
+    # ******************************************************FLY CONFIGURATIONS*************************************************
+
+    # -----------------------------------------MONITOR CONFIGURATIONS--------------------------------------------------------
+
+    def get_controller_config(self) -> FlightControllerConfig:
+        cfg = self._config.action.controller
+
+        controller_cfg = FlightControllerConfig(
+            home= cfg.home
+        )
+
+        return controller_cfg
+
+
+    def get_monitor_config(self) -> MonitorConfig:
+        cfg = self._config.action.monitor
+
+        monitor_cfg = MonitorConfig(
+            timeout_sec= cfg.timeout_sec,
+            freeze_sec= cfg.freeze_sec
+        )
+
+        return monitor_cfg

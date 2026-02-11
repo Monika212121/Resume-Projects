@@ -9,6 +9,7 @@ class ActionStatus(Enum):
     FAILED = "failed"
     MOVED_FORWARD = "moved"
     NONE = "nothing_happened"
+    LOST = "object_lost"
 
 
 @dataclass

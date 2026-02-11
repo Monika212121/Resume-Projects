@@ -15,3 +15,4 @@ class LifeCycleAction(Enum):
 class LifeCycleCommand:
     action: LifeCycleAction
     track_id: Optional[int]
+    selection_count: int
