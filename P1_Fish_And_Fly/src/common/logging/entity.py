@@ -7,8 +7,7 @@ class GarbageLogEntry:
     class_name: str
     first_seen_frame: int
     last_seen_frame: int
-    final_state: str                                # collected / lost / ignored / failed
-    lifecycle_state: str                            # NEW / STABLE / SELECTED / DONE / LOST     
+    final_state: str                                # collected / lost / ignored / failed  
     age: int
     avg_confidence: float
     priority_score: Optional[float] = None
