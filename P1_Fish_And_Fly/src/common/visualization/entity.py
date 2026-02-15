@@ -4,6 +4,11 @@ from typing import List, Optional, Tuple
 
 
 @dataclass
+class PerceptionVisualization:
+    enabled_gui: bool
+
+
+@dataclass
 class VisualObject:
     id: int
     bbox: Tuple[int, int, int, int]
@@ -19,4 +24,3 @@ class VisualizationEntity:
     selected_id: Optional[int]
     action_label: Optional[str]
     grasp_threshold: float
-

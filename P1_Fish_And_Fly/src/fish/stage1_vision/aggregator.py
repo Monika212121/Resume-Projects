@@ -1,8 +1,14 @@
 from typing import List, Dict, Tuple, Set
 
 from src.common.logging import logger
+
 from src.fish.stage1_vision.entity import Detection, TrackedGarbage, TrackedState
+
+from src.fish.stage2_decision.entity import ActionIntent
 from src.fish.stage2_decision.command import LifeCycleCommand, LifeCycleAction
+
+from common.logging.result_logger import OutcomeLogger
+
 
 
 class GarbageAggregator:
@@ -17,6 +23,7 @@ class GarbageAggregator:
         self.frame_count: int = 0
         self.memory: Dict[int, TrackedGarbage] = {}                             # lifecycle memory
         self.done_ids: Set[int] = set()                                         # list of ids of DONE/FAILED/LOST objects      
+        self.result_logger = OutcomeLogger()                                    # to log the LOST objects
 
 
     
@@ -92,6 +99,17 @@ class GarbageAggregator:
                 if tracked_object.state != TrackedState.DONE:                       # the object is not collected yet.
                     tracked_object.state = TrackedState.LOST
                     logger.info(f"marked lost: track_id: {track_id}")
+
+                    action_intent = ActionIntent(
+                        track_id= track_id,
+                        class_name= tracked_object.class_name,
+                        priority_score= 0,                                          # priority_score = 0 because we should not try to collect LOST objects
+                        bbox= tracked_object.bbox,
+                        reason= "The object is missing for a long time"
+                    )
+
+                    # Logging LOST garbage objects
+                    self.result_logger.log_action_results(action_intent, None)
                 
         
         # ----------------Cleanup of DONE and LOST objects-------

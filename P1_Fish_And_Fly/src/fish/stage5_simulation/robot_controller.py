@@ -13,7 +13,7 @@ class RobotController:
         self.fish_robot_id: Optional[int] = None
 
 
-    def spawn(self):
+    def spawn_fish_robot(self):
         collision = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.5, 0.2, 0.15])
         visual = p.createVisualShape(
             p.GEOM_BOX,
@@ -65,7 +65,7 @@ class RobotController:
         return
 
 
-    def get_robot_fish_pose(self) -> Optional[Tuple[float, float, float, float]]:
+    def get_fish_robot_pose(self) -> Optional[Tuple[float, float, float, float]]:
         """
         Returns fish pose in simulation frame:
         (x, y, z, yaw)

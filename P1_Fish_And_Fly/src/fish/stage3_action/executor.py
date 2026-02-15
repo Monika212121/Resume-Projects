@@ -42,7 +42,7 @@ class ActionExecutor:
             # Case2: If the locked object is collected successfully.
             else:
                 feedback = ActionFeedback(
-                    status = ActionStatus.SUCCESS,
+                    status = ActionStatus.COLLECTED,
                     track_id = action_intent.track_id,
                     reason = "Target collected"
                 )

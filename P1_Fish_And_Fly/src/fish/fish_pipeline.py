@@ -3,20 +3,19 @@
 import cv2
 
 from src.common.logging import logger
-from src.common.config.configuration import ConfigurationManager
-from src.common.projection.world_projection import WorldProjector
-from src.common.visualization.visualizer import Visualizer
 from src.common.entity.heartbeat import SystemHeartbeat
+from src.common.visualization.visualizer import Visualizer
+from src.common.config.configuration import ConfigurationManager
+from src.common.projection.fish_frame_projection import FishFrameProjector
 
 from src.fish.stage1_vision.pipeline import VisionPipeline
 from src.fish.stage1_vision.io.factory import build_vision_input
 
-from src.fish.stage2_decision.pipeline import DecisionPipeline
 from src.fish.stage2_decision.command import LifeCycleAction
+from src.fish.stage2_decision.pipeline import DecisionPipeline
 
-from src.fish.stage3_action.entity import MissionPhase
+from src.common.logging.result_logger import OutcomeLogger
 from src.fish.stage3_action.mission_planner import MissionPlanner
-from src.fish.stage3_action.result_logger import OutcomeLogger
 
 
     
@@ -36,7 +35,7 @@ class FishPipeline:
         
         self.visualizer_config = fish_cfg_mg.get_perception_visualization_config()
 
-        self.simulation_config = fish_cfg_mg.get_simulation_visualization_config()
+        self.simulation_visualization_config = fish_cfg_mg.get_simulation_visualization_config()
 
         # Instantiating the pipelines
         self.vision_pipeline_obj = VisionPipeline(vision_cfg = self.vision_config)
@@ -49,17 +48,17 @@ class FishPipeline:
             navigation_cfg = self.navigation_config,
             cost_model_cfg = self.cost_model_config,
             dump_location_cfg = self.dump_location_config,
-            simulation_cfg= self.simulation_config
+            sim_visualization_cfg= self.simulation_visualization_config
         )
 
-        self.world_projector_obj = WorldProjector()
+        self.fish_frame_projector_obj = FishFrameProjector()
         self.visualization_obj = Visualizer()
         self.result_logger = OutcomeLogger()
 
     
     def initiate(self):
         try:
-            print(f"FishPipeline -> initiate(): STARTS")
+            logger.info(f"FishPipeline -> initiate(): STARTS")
 
             # Getting the vision input
             self.vision_input = build_vision_input(self.vision_config.io)
@@ -67,7 +66,7 @@ class FishPipeline:
             # Start consuming the visual feed
             self.vision_input.start()
 
-            print(f"FishPipeline -> initiate(): ENDS")
+            logger.info(f"FishPipeline -> initiate(): ENDS")
             return
     
 
@@ -79,13 +78,13 @@ class FishPipeline:
 
     def terminate(self):
         try:
-            print(f"FishPipeline -> terminate(): STARTS")
+            logger.info(f"FishPipeline -> terminate(): STARTS")
 
             # Stop consuming the visual feed
             self.vision_input.stop()
             cv2.destroyAllWindows()
 
-            print(f"FishPipeline -> terminate(): ENDS")
+            logger.info(f"FishPipeline -> terminate(): ENDS")
             return
 
 
@@ -102,10 +101,13 @@ class FishPipeline:
             # Reading the frame of visual feed
             frame = self.vision_input.read()                             
             if frame is None:
+                # If frame is not received, then abort the mission
+                self.mission_planner_obj.abort_mission()
+
                 heartbeat = SystemHeartbeat.now(
-                    mission_phase= MissionPhase.ABORT,
+                    mission_phase= self.mission_planner_obj.phase,
                     position= self.mission_planner_obj.navigator.current_position,
-                    issue= "Frame is not captured"
+                    issue= "Frame is not captured, so mission is aborted"
                 )
                 return heartbeat
             
@@ -117,16 +119,19 @@ class FishPipeline:
             # REASONING | DECISION: Creating 1 action intent (Decision -> Action module) and select command (Decision -> Vision module) 
             action_intent, select_command = self.decision_pipeline_obj.run(active_tracked_agg_objects)
 
-            # PROJECTION: Providing active_objects and selected object, after Projecting [active_objects(image frame) -> world objects(world frame)] 
-            world_objects, selected_world_object = self.world_projector_obj.transform_to_world_frame(active_objects= active_tracked_agg_objects, action_intent= action_intent)
+            # PROJECTION: Providing active_objects and selected object, after Projecting [active_objects(image frame) -> fish_frame_objects(fish frame)] 
+            fish_frame_objects, selected_fish_frame_object = self.fish_frame_projector_obj.transform_to_fish_frame(active_objects= active_tracked_agg_objects, action_intent= action_intent)
 
             # VISUALIZATION: Viewing the tracked objects, in actual video/camera feed. 
             if self.visualizer_config.enabled_gui:
-                self.visualization_obj.visualize_objects(frame = frame, active_objects= active_tracked_agg_objects, selected_world_obj= selected_world_object)
+                self.visualization_obj.visualize_objects(frame = frame, active_objects= active_tracked_agg_objects, selected_world_obj= selected_fish_frame_object)
 
-                if cv2.waitKey(1) & 0xFF == ord('q'):                                                       # Exit when 'q' is pressed
+                if cv2.waitKey(1) & 0xFF == ord('q'):                                                        # Exit when 'q' is pressed
+                    # If perception visualization is not interupted, then abort the mission
+                    self.mission_planner_obj.abort_mission()   
+
                     heartbeat = SystemHeartbeat.now(
-                        mission_phase= MissionPhase.ABORT,
+                        mission_phase= self.mission_planner_obj.phase,
                         position= self.mission_planner_obj.navigator.current_position,
                         issue= "Visualization is ended / interupted"
                     )
@@ -135,7 +140,8 @@ class FishPipeline:
             # Logging the LOST target object, in the `garbage.csv` file, without further applying action on it
             if select_command and select_command.action == LifeCycleAction.LOST:
                 if action_intent:
-                    self.result_logger.log_action_results(action_intent, None)  
+                    self.result_logger.log_action_results(action_intent, None) 
+                     
                     heartbeat = SystemHeartbeat.now(
                         mission_phase= self.mission_planner_obj.phase,
                         position= self.mission_planner_obj.navigator.current_position,
@@ -163,7 +169,7 @@ class FishPipeline:
                 navigation_only = True
 
             # If selected world object is not created.
-            if selected_world_object is None:
+            if selected_fish_frame_object is None:
                 logger.info(f"No world object is created for the action intent")
                 navigation_only = True
 
@@ -190,7 +196,7 @@ class FishPipeline:
 
             # ACTION: Execute the action intent(from Decision -> Action) to collect the target garbage, following the mission planner.
             # SIMULATION: Action and Simulation are connected together and run parallely.
-            action_feedback = self.mission_planner_obj.tick(action_intent, selected_world_object, world_objects)  
+            action_feedback = self.mission_planner_obj.tick(action_intent, selected_fish_frame_object, fish_frame_objects)  
 
             # Skip updating lifecycle changes, if there is no object, considered for pickup/picked up
             if action_intent is None:

@@ -1,13 +1,10 @@
 import pybullet as p
 import pybullet_data
-
 from typing import List
 
 from src.common.logging import logger
 
 from src.fish.stage3_action.entity import Waypoint
-
-
 
 X_MIN, X_MAX = 0, 100
 Y_MIN, Y_MAX = 0, 100
@@ -31,13 +28,13 @@ class PyBulletWorld:
         else:
             p.connect(p.DIRECT)
 
+        
         p.setGravity(0, 0, 0)
 
+        
         # Create water body workspace
         self.create_water_cuboid()
-
-        #p.loadURDF("D:/Resume-Projects/P1_Fish_And_Fly/src/fish/stage5_simulation/assets/plane.urdf")
-
+        '''
         # 🔒 Lock camera ONCE
         p.resetDebugVisualizerCamera(
             cameraDistance=12,
@@ -45,6 +42,7 @@ class PyBulletWorld:
             cameraPitch=-30,
             cameraTargetPosition=[0, 0, 0],
         )
+        '''
 
         # Optional: hide noisy GUI panels
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
@@ -52,8 +50,8 @@ class PyBulletWorld:
         p.configureDebugVisualizer(p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, 0)
 
-        #self._create_workspace()
         self.connected = True
+        return
 
 
 
@@ -61,17 +59,22 @@ class PyBulletWorld:
         fx, fy, fz = fish_pose.x, fish_pose.y, fish_pose.z
 
         p.resetDebugVisualizerCamera(
-            cameraDistance=30,      # wide enough to see garbage
+            cameraDistance=30,                                                                              # wide enough to see garbage
             cameraYaw=45,
             cameraPitch=-35,
             cameraTargetPosition=[fx, fy, fz],
         )
+
+        return
+        
 
 
     def shutdown(self):
         if self.connected:
             p.disconnect()
             self.connected = False
+        
+        return
 
 
 
@@ -79,7 +82,7 @@ class PyBulletWorld:
         visual = p.createVisualShape(
             p.GEOM_BOX,
             halfExtents=half_extents,
-            rgbaColor=[0, 0.5, 1, 0.15],  # transparent water blue
+            rgbaColor=[0, 0.5, 1, 0.15],                                                                    # transparent water blue
         )
 
         collision = p.createCollisionShape(
@@ -93,6 +96,7 @@ class PyBulletWorld:
             baseVisualShapeIndex=visual,
             basePosition=position,
         )
+
 
 
     def create_water_cuboid(self):

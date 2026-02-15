@@ -5,7 +5,8 @@ from typing import Optional, List
 from dataclasses import dataclass
 
 class ActionStatus(Enum):
-    SUCCESS = "success"
+    ACTIVE = "active"
+    COLLECTED = "success"
     FAILED = "failed"
     MOVED_FORWARD = "moved"
     NONE = "nothing_happened"

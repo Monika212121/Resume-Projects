@@ -2,7 +2,7 @@ import time
 from typing import Optional, Dict, Any, Tuple
 
 from src.common.logging import logger
-from src.common.projection.entity import WorldObject
+from src.common.projection.entity import FishFrameObject
 from src.common.alerts_and_notifications.notifier import AlertNotifier
 from src.common.alerts_and_notifications.alert_types import AlertType, ErrorType
 from src.common.alerts_and_notifications.notification_types import NotificationType
@@ -14,7 +14,7 @@ from src.fish.stage3_action.executor import ActionExecutor
 from src.fish.stage3_action.pipeline import ActionPipeline
 from src.fish.stage3_action.unload_behavior import UnloadGarbageBehavior
 from src.fish.stage3_action.entity import Mission, Bin, Navigation, CostModel, DumpLocation, MissionPhase, Depths, MissionCheckpoint, ActionStatus, ActionFeedback, Waypoint
-from src.fish.stage5_simulation.entity import Simulation
+from src.fish.stage5_simulation.entity import SimulationVisualization
 from src.fish.stage5_simulation.sim_bridge import SimulationBridge
 
 
@@ -30,7 +30,7 @@ class MissionPlanner:
         - Resume after action feedback
 
     """
-    def __init__(self, mission_cfg: Mission, bin_cfg: Bin, navigation_cfg: Navigation, cost_model_cfg: CostModel, dump_location_cfg: DumpLocation, simulation_cfg: Simulation):
+    def __init__(self, mission_cfg: Mission, bin_cfg: Bin, navigation_cfg: Navigation, cost_model_cfg: CostModel, dump_location_cfg: DumpLocation, sim_visualization_cfg: SimulationVisualization):
         self.mission_cfg = mission_cfg
 
         self.notifier = AlertNotifier()   
@@ -45,7 +45,7 @@ class MissionPlanner:
             garbage_dump= dump_location_cfg,
             depths = self.mission_cfg.depths
         )
-        self.sim_bridge = SimulationBridge(simulation_cfg = simulation_cfg)                                                                # Connection to PyBullet Simulation
+        self.sim_bridge = SimulationBridge(simulation_cfg = sim_visualization_cfg)                                                                # Connection to PyBullet Simulation
 
         self.phase = MissionPhase.SURFACE    
         self.depths: Depths = mission_cfg.depths                                                            # Mission state initiated
@@ -87,7 +87,7 @@ class MissionPlanner:
 
 
 
-    def apply_depth_to_world_objects(self, world_objects: Dict[int, WorldObject], sel_world_object: Optional[WorldObject]) -> Tuple[Dict[int, WorldObject], Optional[WorldObject]]:
+    def apply_depth_to_fish_frame_objects(self, fish_frame_objects: Dict[int, FishFrameObject], sel_fish_frame_object: Optional[FishFrameObject]) -> Tuple[Dict[int, FishFrameObject], Optional[FishFrameObject]]:
         """
         Projects perception objects into mission depth.
 
@@ -102,13 +102,13 @@ class MissionPlanner:
         :rtype: Tuple[Dict[int, WorldObject], WorldObject | None]
         """
         try:
-            logger.info(f"MissionPlanner -> apply_depth_to_world_objects(): STARTS, before world_objects: {world_objects}")
+            logger.info(f"MissionPlanner -> apply_depth_to_world_objects(): STARTS, before world_objects: {fish_frame_objects}")
             curr_depth : float = 0.0
 
             # If world object is present, then selected world object must be present
-            if len(world_objects) == 0:
+            if len(fish_frame_objects) == 0:
                 logger.info(f"MissionPlanner -> apply_depth_to_world_objects(): There is no world objects")
-                return (world_objects, sel_world_object)                                                    # No projection needed
+                return (fish_frame_objects, sel_fish_frame_object)                                                    # No projection needed
 
             # Determining the current depth of the Fish machine
             if self.phase == MissionPhase.SURFACE:
@@ -116,20 +116,20 @@ class MissionPlanner:
             elif self.phase == MissionPhase.UNDERWATER:
                 curr_depth = self.depths.underwater
             else:
-                return (world_objects, sel_world_object)                                                    # No projection needed
+                return (fish_frame_objects, sel_fish_frame_object)                                                    # No projection needed
             
             logger.info(f"MissionPlanner -> apply_depth_to_world_objects(): current depth: {curr_depth}")
             
             # Updating the depth of world objects and selected world object
-            for obj in world_objects.values():
-                obj.position.z = curr_depth
+            for obj in fish_frame_objects.values():
+                obj.relative_position.z = curr_depth
 
-                if sel_world_object and obj.track_id == sel_world_object.track_id:
-                    sel_world_object.position.z = curr_depth
+                if sel_fish_frame_object and obj.track_id == sel_fish_frame_object.track_id:
+                    sel_fish_frame_object.relative_position.z = curr_depth
 
 
-            logger.info(f"MissionPlanner -> apply_depth_to_world_objects(): ENDS, after world_objects: {world_objects}")
-            return (world_objects, sel_world_object)
+            logger.info(f"MissionPlanner -> apply_depth_to_world_objects(): ENDS, after world_objects: {fish_frame_objects}")
+            return (fish_frame_objects, sel_fish_frame_object)
 
 
         except Exception as e:
@@ -138,7 +138,7 @@ class MissionPlanner:
         
 
 
-    def tick(self, action_intent: Optional[ActionIntent], sel_world_object: Optional[WorldObject], world_objects: Dict[int, WorldObject]) -> ActionFeedback:
+    def tick(self, action_intent: Optional[ActionIntent], sel_fish_frame_object: Optional[FishFrameObject], fish_frame_objects: Dict[int, FishFrameObject]) -> ActionFeedback:
         """
         Gate of Action pipeline. 
 
@@ -167,12 +167,12 @@ class MissionPlanner:
             # A. Ensure simulation is started exactly once
             self.sim_bridge.start()
 
-            # B. Inject correct depth to world_objects and selected world object                            # refer ACTION_NOTES.md(10)
-            world_objects, sel_world_object = self.apply_depth_to_world_objects(world_objects, sel_world_object)    
+            # B. Inject correct depth to fish_frame_objects and selected fish_frame object                            # refer ACTION_NOTES.md(10)
+            fish_frame_objects, sel_fish_frame_object = self.apply_depth_to_fish_frame_objects(fish_frame_objects, sel_fish_frame_object)    
 
             # C. SIMULATION: Spawn garbage objects in front of Fish machine, mirroring perception(VISION)
-            if len(world_objects) > 0:
-                self.sim_bridge.update_garbage_projection(world_objects= world_objects, fish_pos = self.navigator.current_position)
+            if len(fish_frame_objects) > 0:
+                self.sim_bridge.update_garbage_spawning(fish_frame_objects= fish_frame_objects, curr_fish_position= self.navigator.current_position, curr_fish_direction= self.navigator.curr_fish_direction)
 
             # D. Coordinates Garbage collection, Navigation and Garbage unloading
 
@@ -200,7 +200,7 @@ class MissionPlanner:
 
                 else:
                     logger.info(f"MissionPlanner -> tick(): Error occurred in unloading bin")
-                    self._abort_mission()
+                    self.abort_mission()
 
                     feedback = ActionFeedback(
                         status= ActionStatus.FAILED,
@@ -215,7 +215,7 @@ class MissionPlanner:
             # 3. Handles GARBAGE COLLECTION and NAVIGATION together.
                        
             # Case1: If the target is identified(action_intent = valid) and is within reach, then collect it.
-            if action_intent and sel_world_object and self.navigator.target_is_near(sel_world_object):
+            if action_intent and sel_fish_frame_object and self.navigator.target_is_near(sel_fish_frame_object):
                 logger.info(f"MissionPlanner -> tick(): Garbage is near, we have to handle target at location: {action_intent.bbox}")
                 feedback = self._handle_target(action_intent)                                               # SUCCESS/FAILED
 
@@ -227,7 +227,7 @@ class MissionPlanner:
                 next_robot_position = self.navigator.get_next_position()
 
                 # SIMULATION for moving 1 step forward
-                moved_in_sim = self.simulate_step_forward(target_position= next_robot_position, world_objects= world_objects)
+                moved_in_sim = self.simulate_step_forward(target_position= next_robot_position, fish_frame_objects= fish_frame_objects)
                 if moved_in_sim:
                     feedback = ActionFeedback(
                         status= ActionStatus.MOVED_FORWARD,
@@ -237,7 +237,9 @@ class MissionPlanner:
 
                     # Log the new position for trajectory visualization.
                     self.navigator.step_count += 1                                                          # Maintaining step count for trajectory logging.
-                    self.navigator.log_trajectory_point()                                                   
+                    self.navigator.log_trajectory_point() 
+
+                    # Updating fish machine's direction                                                  
 
                 else:
                     logger.info(f"MissionPlanner -> tick(): Simulation failed, error from Simulation module")
@@ -263,7 +265,7 @@ class MissionPlanner:
 
 
 
-    def simulate_step_forward(self, target_position: Waypoint, world_objects: Dict[int, WorldObject] = {}) -> bool:
+    def simulate_step_forward(self, target_position: Waypoint, fish_frame_objects: Dict[int, FishFrameObject] = {}) -> bool:
         """
         Apply a precomputed robot pose to the simulation.
 
@@ -290,7 +292,7 @@ class MissionPlanner:
             # NOTE: Here, I am not passing target waypoint, I am passing the new target position (already calculated in step_forward())
             
             # 2. Execute simulation step (teleport-based kinematic execution)
-            self.sim_bridge.step(pose= target_position)
+            self.sim_bridge.step(pose= target_position, curr_mission_phase= self.phase.name)
 
             # 3. Read back pose from simulation (after stepping)
             sim_curr_pose = self.sim_bridge.get_robot_pose()
@@ -363,11 +365,11 @@ class MissionPlanner:
 
             # 4. Handle the target.
             # If target is collected successfully or after retry, reset the active target.
-            if feedback.status == ActionStatus.SUCCESS or self._handle_failure(action_intent):
+            if feedback.status == ActionStatus.COLLECTED or self._handle_failure(action_intent):
 
                 # Update the feedback status to SUCCESS, if handle_failure() succeeds.
                 if feedback.status == ActionStatus.FAILED:                                                  # first attempt failed but retry is success
-                    feedback.status = ActionStatus.SUCCESS                                                  # refer ACTION_NOTE.md (5)
+                    feedback.status = ActionStatus.COLLECTED                                                  # refer ACTION_NOTE.md (5)
                     feedback.reason = "Action retry is success"
 
                 # Update the bin's load by 1 collected garbage.
@@ -398,7 +400,7 @@ class MissionPlanner:
                 logger.info(f"MissionPlanner -> handle_failure(): retry count: {self.retry_count + 1}")
 
                 feedback = self.action_pipeline.run(action_intent)
-                if feedback and feedback.status == ActionStatus.SUCCESS:
+                if feedback and feedback.status == ActionStatus.COLLECTED:
                     logger.info(f"MissionPlanner -> handle_failure(): Soft retry is successful in retry count: {self.retry_count+ 1}")
                     return True
 
@@ -410,7 +412,7 @@ class MissionPlanner:
             self.lost_target += 1
             if self.lost_target >= self.max_target_loss:
                 self.phase = MissionPhase.ABORT
-                self._abort_mission()
+                self.abort_mission()
 
             logger.info(f"MissionPlanner -> handle_failure(): ENDS, lost target : {self.lost_target}")
             return False
@@ -441,7 +443,7 @@ class MissionPlanner:
                     logger.info(f"MissionPlanner -> advance_phase(): Error occurred in DESCENDING, error: {ErrorType.EXECUTION_ERROR}")
                     self.notifier.raise_alert(alert_type= AlertType.DESCEND_FAIL, message= "descend fail", metadata = {"error": ErrorType.EXECUTION_ERROR, "current location": self.navigator.current_position})
                     self.phase = MissionPhase.ABORT
-                    self._abort_mission()
+                    self.abort_mission()
 
                 logger.info(f"MissionPlanner -> advance_phase(): Mission phase DESCEND is successful. Advance to next phase -> UNDERWATER")
                 self.notifier.raise_notification(NotificationType.MACHINE_DESCENDED, "DESCEND SUCCESS", {})
@@ -470,7 +472,7 @@ class MissionPlanner:
                     logger.info(f"MissionPlanner -> advance_phase(): Error occurred in ASCENDING, error: {ErrorType.EXECUTION_ERROR}")
                     self.notifier.raise_alert(alert_type= AlertType.ASCEND_FAIL, message= "ascend fail", metadata = {"error": ErrorType.EXECUTION_ERROR, "current location": self.navigator.current_position})
                     self.phase = MissionPhase.ABORT
-                    self._abort_mission()
+                    self.abort_mission()
 
                 logger.info(f"MissionPlanner -> advance_phase(): Mission phase ASCEND is successful. CLEANING is done successfully. Advance to next phase -> RETURN")
                 self.notifier.raise_notification(NotificationType.MACHINE_ASCENDED, "ASCEND SUCCESS", {})
@@ -486,7 +488,7 @@ class MissionPlanner:
                     # Raise alert and retry the return.
                     logger.info(f"MissionPlanner -> advance_phase(): Error occurred in RETURNING TO HQ, error: {ErrorType.EXECUTION_ERROR}")
                     self.notifier.raise_alert(alert_type= AlertType.HQ_RETURN_FAIL, message= "return fail", metadata = {"error": ErrorType.EXECUTION_ERROR, "current location": self.navigator.current_position})
-                    self._abort_mission()
+                    self.abort_mission()
 
                 logger.info(f"MissionPlanner -> advance_phase(): Mission phase RETURN TO HQ is successful.")
                 self.notifier.raise_notification(NotificationType.REACHED_HEADQUARTER, "HQ RETURN IS SUCCESS", {})
@@ -509,9 +511,9 @@ class MissionPlanner:
         
 
 
-    def _abort_mission(self):
+    def abort_mission(self):
         try:
-            logger.info(f"MissionPlanner -> abort_mission(): STARTS, reason to abort: {self.phase}")
+            logger.info(f"MissionPlanner -> abort_mission(): STARTS, Last phase before abort: {self.phase}")
 
             self.freeze_mission_data = MissionCheckpoint(
                 last_phase= self.phase,
@@ -519,58 +521,58 @@ class MissionPlanner:
                 last_timestamp= time.time()
             )
          
+            # First update the mission's phase to ABORT (Used in Simulation)
+            self.phase = MissionPhase.ABORT
+
             # Return to the HQ immediately.
+            HQ_point = self.mission_cfg.hq_point
+
+            # Defining current position and depth
             curr_pos = self.navigator.current_position
-            curr_level = curr_pos.z
-
-            # Case1: If currently in surface level, directly approach HQ.
-            if curr_level == self.depths.surface:
-                reached_HQ = self.simulate_step_forward(target_position= self.mission_cfg.hq_point)
-                if not reached_HQ:
-                    logger.info(f"MissionPlanner -> abort_mission(): Error occurred in reaching the HQ")
-                    self._get_manual_help()
-                    return
-
-
-            # Case2: If currently in underwater, first ascend to the surface level, then approach the HQ.
-            else: 
-                # first move up to the surface
-                curr_pos.z = self.depths.surface
-                reached_up = self.simulate_step_forward(target_position= curr_pos)
-                if not reached_up:
-                    logger.info(f"MissionPlanner -> abort_mission(): Error occurred in reaching the water surface level.")
-                    self._get_manual_help()
-                    return
-
-                # then move towards HQ.
-                reached_HQ = self.simulate_step_forward(target_position= self.mission_cfg.hq_point)
-                if not reached_HQ:
-                    logger.info(f"MissionPlanner -> abort_mission(): Error occurred in reaching the HQ")
-                    self._get_manual_help()
-                    return
-                
-            # Handle abort cases.
-            # Case1: If returning to HQ is failed, then it means cleaning is already completed.
-            # Reached HQ after retry, means the mission is completed sucessfully.
-            if self.phase == MissionPhase.RETURN:
-                logger.info(f"MissionPlanner -> Cleaning process is already completed and now reached the HQ too after retry.")
-                self.phase = MissionPhase.DONE
+            curr_operation_depth = curr_pos.z
             
-            # Case2: If the mission is aborted in middle of cleaning.
-            if self.phase == MissionPhase.ABORT:
-                self.notifier.raise_alert(AlertType.HARD_ABORT, "Mission aborted in middle of water body cleaning", {"last_active_checkpoint": self.freeze_mission_data})
-                self.phase = MissionPhase.FAILED
+            # Moving forward stepwise to reach destination i.e. HQ
+            while not self.navigator.reached_destination(destination= HQ_point):
+                logger.info(f"***************Enter while loop********************")
 
-            if self.phase == MissionPhase.UNLOADING:
-                self.notifier.raise_alert(AlertType.UNLOADING_FAIL, "Mission aborted in middle of unloading garbage process", {"last_active_checkpoint": self.freeze_mission_data})
-                self.phase = MissionPhase.FAILED
+                # If currently in underwater, first ascend to the surface level, then approach the HQ.
+                if curr_operation_depth == self.depths.underwater:
+                    curr_pos.z = self.depths.surface
+                    reached_up = self.simulate_step_forward(target_position= curr_pos)
+                    if not reached_up:
+                        logger.info(f"MissionPlanner -> abort_mission(): Error occurred in reaching the water surface level.")
+                        self._get_manual_help()
+                        break
 
-            logger.info(f"MissionPlanner -> abort_mission(): ENDS, reached HQ on its own, CHECK-> curr_pos: {self.navigator.current_position}, curr phase: {self.phase}")
+                # Now the fish machine is currently in surface, so directly traverse to the HQ.
+                next_robot_pos = self.navigator.get_linear_step_to_destination(destination= HQ_point)
+                reached = self.simulate_step_forward(target_position= next_robot_pos)
+                
+                if not reached:
+                    logger.info(f"MissionPlanner -> abort_mission(): Simulation failed in reaching the HQ")
+                    self._get_manual_help()
+                    break
+
+            
+            self.notifier.raise_alert(AlertType.HARD_ABORT, "Mission aborted in middle of water body cleaning", {"last_active_checkpoint": self.freeze_mission_data})
+
+            logger.info(f"MissionPlanner -> abort_mission(): ENDS, reached HQ on its own, CHECK-> curr_pos: {curr_pos}")
             return
 
 
         except Exception as e:
             logger.info(f"Error occurred in MissionPlanner -> abort_mission(), error: {e}")
+            raise e
+
+
+
+    def reach_destination_in_step(self, destination: Waypoint) -> bool:
+        try:
+            return True
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in MissionPlanner -> ")
             raise e
 
 
@@ -584,6 +586,9 @@ class MissionPlanner:
                 "last location": self.navigator.current_position,
                 "current phase": self.phase
             }
+
+            # Updating mission's phase as FAILED, as human intervention is required
+            self.phase = MissionPhase.FAILED
 
             self.notifier.raise_alert(AlertType.MACHINE_FAILURE, "NEEDS HUMAN SUPPORT, PLEASE SEND HELP FROM THE HQ", metadata= meta)
             logger.info(f"MissionPlanner() -> get_manual_help(): ENDS")
