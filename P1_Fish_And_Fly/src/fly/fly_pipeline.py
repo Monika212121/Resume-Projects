@@ -5,7 +5,7 @@ from src.common.entity.heartbeat import SystemHeartbeat
 from src.common.config.configuration import ConfigurationManager
 from src.common.alerts_and_notifications.notifier import AlertNotifier, AlertType
 
-from src.fly.stage2_action.entity import FishStatus
+from src.fly.stage2_action.entity import FishStatus, StateDeltas
 from src.fly.stage2_action.flight_controller import FlightController
 from src.fly.stage2_action.heartbeat_monitor import HeartbeatMonitor
 
@@ -62,7 +62,7 @@ class FlyPipeline:
     
 
 
-    def tick(self, heartbeat: SystemHeartbeat):
+    def tick(self, heartbeat: SystemHeartbeat) -> StateDeltas:
         try:
             logger.info("*********************************************FLY MODULE SYSTEM: STARTS********************************************")
 
@@ -92,7 +92,7 @@ class FlyPipeline:
 
 
             logger.info("*********************************************FLY MODULE SYSTEM: ENDS********************************************")
-            return
+            return fish_health
         
 
         except Exception as e:

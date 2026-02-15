@@ -3,11 +3,11 @@ import numpy as np
 from typing import List, Optional
 
 from src.common.logging import logger
+from src.common.projection.entity import FishFrameObject
 from src.common.visualization.entity import VisualizationEntity
 from src.common.visualization.adapter import VisualizationAdapter
 from src.common.visualization.video_overlay import GarbageVideoOverlay
-from src.common.projection.entity import WorldObject
-from src.common.projection.convert_camera_to_world import CameraToWorldProjector
+from src.common.projection.convert_camera_to_fish_frame import CameraToFishFrameProjector
 
 from src.fish.stage1_vision.entity import TrackedGarbage
 
@@ -21,13 +21,13 @@ class Visualizer:
         self.SRC_HEIGHT = 1080   
 
         self.overlay_obj = GarbageVideoOverlay()
-        self.viz_adapter = VisualizationAdapter(src_width= self.SRC_WIDTH, src_height= self.SRC_HEIGHT, dst_width= self.FRAME_WIDTH, dst_height= self.FRAME_HEIGHT)
         self.viz_state: VisualizationEntity
-        self.projector = CameraToWorldProjector(image_width= self.SRC_WIDTH, image_height= self.SRC_HEIGHT)
+        self.viz_adapter = VisualizationAdapter(src_width= self.SRC_WIDTH, src_height= self.SRC_HEIGHT, dst_width= self.FRAME_WIDTH, dst_height= self.FRAME_HEIGHT)
+        self.projector = CameraToFishFrameProjector(image_width= self.SRC_WIDTH, image_height= self.SRC_HEIGHT)
 
 
 
-    def visualize_objects(self, frame: np.ndarray, active_objects: List[TrackedGarbage], selected_world_obj: Optional[WorldObject]) -> None:
+    def visualize_objects(self, frame: np.ndarray, active_objects: List[TrackedGarbage], selected_world_obj: Optional[FishFrameObject]) -> None:
         """
         Visualize tracked objects, selection, grasp threshold and world projection.
         """
@@ -50,7 +50,7 @@ class Visualizer:
         viz_entity = self.viz_adapter.build(active_objects= active_objects, selected_track_id = selected_world_obj.track_id)
 
         # 3. Resize Bounding box of the selected object.
-        x1, y1, x2, y2 = selected_world_obj.bbox
+        x1, y1, x2, y2 = selected_world_obj.original_bbox
 
         scale_x = self.FRAME_WIDTH / self.SRC_WIDTH
         scale_y = self.FRAME_HEIGHT / self.SRC_HEIGHT

@@ -9,3 +9,6 @@ WORKSPACE_BOUNDS = {
     "z_min": -8.0,
     "z_max": 0.0,
 }
+
+
+SIM_GARBAGE_SPAWN_OFFSET_X = 5.0  # meters, forward in Fish heading

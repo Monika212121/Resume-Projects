@@ -32,12 +32,14 @@ class OutcomeLogger:
             if (action_intent.track_id in self.logged_ids) or (action_intent.track_id is None):
                 return                                                                                                                                              
 
+            # NOTE: When object is LOST, it wouldn't pass to the fish_pipeline(only ACTIVE objects will be passed in fish pipeline), 
+            # So I am logging LOST objects in `aggregator.py` file, and hence no feedback will be produced for them.
             # 2. Determining the target object's final status, according to the feedback received.
             final_state = ""
-            if feedback is None:
-                final_state = ActionStatus.LOST.value
+            if feedback is None:         
+                final_state = ActionStatus.LOST
             else:
-                final_state = feedback.status.value
+                final_state = feedback.status
               
             # 3. Creating a new entry.
             new_entry = GarbageLogEntry(

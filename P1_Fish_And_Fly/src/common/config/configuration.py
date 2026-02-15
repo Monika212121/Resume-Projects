@@ -1,14 +1,15 @@
 from box import ConfigBox
 
-from src.common.config.config_mapper import parse_waypoint, parse_waypoint_list
 from src.common.config.config_loader import load_machine_config
-
-from src.fish.stage1_vision.entity import Visualization
-from src.fish.stage3_action.entity import Mission, Bin, Navigation, CostWeights, VehicleModel, NormalizationLimits, CostModel, DumpLocation
-from src.fish.stage5_simulation.entity import Simulation
+from src.common.visualization.entity import PerceptionVisualization
+from src.common.config.config_mapper import parse_waypoint, parse_waypoint_list
 
 from src.fly.stage2_action.entity import MonitorConfig
 from src.fly.stage2_action.entity import FlightControllerConfig
+
+from src.fish.stage5_simulation.entity import SimulationVisualization
+from src.fish.stage3_action.entity import Mission, Bin, Navigation, CostWeights, VehicleModel, NormalizationLimits, CostModel, DumpLocation
+
 
 
 class ConfigurationManager():
@@ -23,9 +24,10 @@ class ConfigurationManager():
     def get_all_config(self) -> ConfigBox:
         return self._config
     
+    
     # ******************************************************FISH CONFIGURATION*************************************************
     
-    #-----------------------------------------VISION CONFIGURATIONS-------------------------------------------------------------
+    # 1. VISION CONFIGURATIONS
     
     def get_vision_config(self) -> ConfigBox:
         return self._config.vision
@@ -50,7 +52,7 @@ class ConfigurationManager():
 
     
     
-    #-----------------------------------------DECISION CONFIGURATIONS-------------------------------------------------------------
+    # 2. DECISION CONFIGURATIONS
 
     def get_decision_config(self) -> ConfigBox:
         return self._config.decision
@@ -65,14 +67,14 @@ class ConfigurationManager():
         return self._config.decision.planner
     
 
-    #-----------------------------------------LANGUAGE CONFIGURATIONS-------------------------------------------------------------
+    # 3. LANGUAGE CONFIGURATIONS
 
     def get_language_config(self) -> ConfigBox:
         return self._config.language
     
 
 
-    #-----------------------------------------ACTION CONFIGURATIONS---------------------------------------------------------------
+    # 4. ACTION CONFIGURATIONS
 
     def get_action_config(self) -> ConfigBox:
         return self._config.action
@@ -166,23 +168,22 @@ class ConfigurationManager():
     
     #-----------------------------------------VISUALIZATION CONFIGURATIONS---------------------------------------------------------------
 
-    def get_perception_visualization_config(self) -> Visualization:
+    # 1. PERCEPTION
+    def get_perception_visualization_config(self) -> PerceptionVisualization:
         cfg = self._config.vision.visualization
 
-        visualizer_config = Visualization(
+        visualizer_config = PerceptionVisualization(
             enabled_gui= cfg.enabled_gui,
         )
 
         return visualizer_config    
 
     
-    #-----------------------------------------SIMULATION CONFIGURATIONS---------------------------------------------------------------
-
-
-    def get_simulation_visualization_config(self) -> Simulation:
+    # 2. SIMULATION
+    def get_simulation_visualization_config(self) -> SimulationVisualization:
         cfg = self._config.simulation.visualization
 
-        simulation_config = Simulation(
+        simulation_config = SimulationVisualization(
             enabled_gui= cfg.enabled_gui,
         )
 
@@ -193,8 +194,9 @@ class ConfigurationManager():
 
     # ******************************************************FLY CONFIGURATIONS*************************************************
 
-    # -----------------------------------------MONITOR CONFIGURATIONS--------------------------------------------------------
-
+    # 2. ACTION CONFIGURATIONS
+    
+    # FLIGHT CONTROLLER
     def get_controller_config(self) -> FlightControllerConfig:
         cfg = self._config.action.controller
 
@@ -205,6 +207,7 @@ class ConfigurationManager():
         return controller_cfg
 
 
+    # HEARTBEAT MONITOR
     def get_monitor_config(self) -> MonitorConfig:
         cfg = self._config.action.monitor
 

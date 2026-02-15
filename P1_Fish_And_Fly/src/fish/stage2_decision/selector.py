@@ -133,7 +133,7 @@ class SelectionLock:
         # Creating Lifcycle command for the locked object to pass to Vision aggregation.
 
         # Case1: TARGET ATTEMPTED: When locked object is collected (SUCCESS).
-        if feedback.status == ActionStatus.SUCCESS:
+        if feedback.status == ActionStatus.COLLECTED:
             command = LifeCycleCommand(
                 action = LifeCycleAction.MARK_DONE,
                 track_id = feedback.track_id,

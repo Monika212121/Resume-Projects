@@ -35,7 +35,3 @@ class TrackedGarbage:
     state: TrackedState
     fade_frames_remaining: int = 0      # UI related
 
-
-@dataclass
-class Visualization:
-    enabled_gui: bool

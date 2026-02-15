@@ -5,8 +5,8 @@ import cv2
 import numpy as np
 from typing import Optional, Tuple
 
+from src.common.projection.entity import FishFrameObject
 from src.common.visualization.entity import VisualizationEntity, VisualObject
-from src.common.projection.entity import WorldObject
 
 
 
@@ -22,7 +22,7 @@ class GarbageVideoOverlay:
         self.threshold_distance = 0.08
 
 
-    def draw(self, frame: np.ndarray, viz_entity: VisualizationEntity, resized_bbox: Optional[Tuple[int, int, int, int]], sel_world_object: WorldObject) -> np.ndarray:
+    def draw(self, frame: np.ndarray, viz_entity: VisualizationEntity, resized_bbox: Optional[Tuple[int, int, int, int]], sel_world_object: FishFrameObject) -> np.ndarray:
         """
         Draw all visual objects and selection highlight.
         """
@@ -103,7 +103,7 @@ class GarbageVideoOverlay:
         return frame
 
 
-    def _draw_world_coords(self, frame: np.ndarray, resized_bbox: Tuple[int, int, int, int], world_obj: WorldObject) -> np.ndarray:
+    def _draw_world_coords(self, frame: np.ndarray, resized_bbox: Tuple[int, int, int, int], world_obj: FishFrameObject) -> np.ndarray:
            
         # NOTE: These coordinates are already resized w.r.t. resized frame.
         x1, y1, x2, y2 = resized_bbox
@@ -111,7 +111,7 @@ class GarbageVideoOverlay:
         cx = int((x1 + x2) / 2)
         cy = int((y1 + y2) / 2)
 
-        text = f"x={world_obj.position.x:.2f}, y={world_obj.position.y:.3f}"
+        text = f"x={world_obj.relative_position.x:.2f}, y={world_obj.relative_position.y:.3f}"
 
         cv2.putText(frame, text, (cx, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)                                 # YELLOW
         return frame

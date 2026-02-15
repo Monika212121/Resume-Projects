@@ -6,7 +6,7 @@ import math
 from typing import List, Dict, Any
 
 from src.common.logging import logger
-from src.common.projection.entity import WorldObject
+from src.common.projection.entity import FishFrameObject
 
 from src.fish.stage3_action.entity import Waypoint, Navigation, Speeds
 
@@ -31,6 +31,8 @@ class PathNavigator:
 
         self.trajectory: list[Dict[Any, Any]] = []
         self.step_count: int = 0
+        self.last_fish_position: Waypoint = Waypoint(0.0, 0.0, 0.0)                           
+        self.curr_fish_direction: int = 1                                                   # Maintaining a direction flag for garbage object simulation
 
 
 
@@ -157,14 +159,14 @@ class PathNavigator:
 
 
 
-    def target_is_near(self, world_obj: WorldObject) -> bool:
+    def target_is_near(self, world_obj: FishFrameObject) -> bool:
         """
         Decide if target is close enough to execute manipulation.
         """
         try:
             logger.info(f"PathNavigator -> target_is_near(): STARTS, world object: {world_obj}")
 
-            target_is_near = world_obj.distance <= self.reach_threshold
+            target_is_near = world_obj.relative_distance <= self.reach_threshold
 
             logger.info(f"PathNavigator -> target_is_near(): ENDS, target_is_near: {target_is_near}")
             return target_is_near
@@ -208,7 +210,7 @@ class PathNavigator:
             # 3. Compute step distance, using formula [distance = speed * time]
             step_distance = self.curr_speed * self.dt
 
-            # 4. If already reached very close to target and might overshoot in stepping, then snap to target waypoint and then approach next waypoint.
+            # 4. If already reached very close to target waypoint and might overshoot in stepping, then snap to target waypoint and then approach next waypoint.
             if distance <= step_distance:
                 
                 # Snap to the current target first
@@ -248,6 +250,9 @@ class PathNavigator:
             # 7. New position for Fish machine
             new_position = Waypoint(new_x, new_y, new_z)
 
+            # 8. Find Fish machine's current navigation direction (USED IN SIMULATION, garbage spawning)
+            self.update_fish_direction(fish_delta_x = dx)
+            
             logger.info(f"PathNavigator -> get_next_position(): ENDS, new_position: {new_position}")
             return new_position
         
@@ -294,4 +299,95 @@ class PathNavigator:
 
         except Exception as e:
             logger.info(f"Error occurred in PathNavigator -> log_trajectory_point(), error: {e}")
+            raise e
+        
+
+
+
+    def update_fish_direction(self, fish_delta_x: float) -> None:
+        try:
+            logger.info(f"PathNavigator -> update_fish_direction(): STARTS, curr_pos: {self.current_position}, last_pos: {self.last_fish_position}")
+
+            # Updating current direction of Fish machine
+            logger.info(f"PathNavigator -> update_fish_direction(), fish_delta_x: {fish_delta_x}")
+            self.curr_fish_direction = 1 if fish_delta_x >= 0 else -1
+
+            # NOTE:
+            # If dir =  1, then fish moving in [0   ->  100] direction and
+            # if dir = -1, then fish moving in [100 ->   0] direction
+
+            # Updating fish machine's last position as the current position
+            self.last_fish_position = self.current_position
+
+            logger.info(f"PathNavigator -> update_fish_direction(): ENDS, current DIRECTION: {self.curr_fish_direction}")
+            return
+
+
+        except Exception as e:
+            raise e
+
+
+
+    def reached_destination(self, destination: Waypoint) -> bool:
+        try:
+            is_reached = False
+            if self.current_position == destination:
+                is_reached = True
+            
+            logger.info(f"PathNavigator -> reached_destination(): ENDS, is_reached: {is_reached}") 
+            return is_reached
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in PathNavigator -> reached_destination(), error: {e}")
+            raise e
+        
+
+
+    def get_linear_step_to_destination(self, destination: Waypoint) -> Waypoint:
+        try:
+            logger.info(f"PathNavigator -> get_linear_step_to_destination(): STARTS")
+
+            # 1. Calculate direction vectors (3D), for DIRECT destination
+            dx = destination.x - self.current_position.x
+            dy = destination.y - self.current_position.y
+            dz = destination.z - self.current_position.z
+
+            # Distance between current position and the destination
+            distance = math.sqrt(dx*dx + dy*dy + dz*dz)
+            logger.info(f"PathNavigator -> get_linear_step_to_destination(): Distance between current position and the destination: {distance}")
+
+            # 2. Compute step distance, using formula [distance = speed * time]
+            step_distance = self.curr_speed * self.dt
+
+            # 3. If already reached very close to target waypoint and might overshoot in stepping, then snap to target waypoint and then approach next waypoint.
+            if distance <= step_distance:
+                
+                # Snap to the current target first
+                self.current_position = destination   
+                self.log_trajectory_point()                                                                 # To avoid missing logging the snapped waypoint
+                
+                logger.info(f"PathNavigator -> get_linear_step_to_destination(): Destination reached") 
+                return destination                                                                                        
+    
+
+            # 4. Normalize directions
+            ux = dx / distance
+            uy = dy / distance
+            uz = dz / distance
+
+            # 5. Incremental motion
+            new_x = self.current_position.x + ux * step_distance
+            new_y = self.current_position.y + uy * step_distance
+            new_z = self.current_position.z + uz * step_distance
+
+            # 7. New position for Fish machine
+            new_position = Waypoint(new_x, new_y, new_z)            
+
+            logger.info(f"PathNavigator -> get_linear_step_to_destination(): ENDS, new_position: {new_position}")
+            return new_position
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in PathNavigator -> get_linear_step_to_destination(), error: {e}")
             raise e
