@@ -34,7 +34,7 @@ def main():
         fish_machine.initiate()
 
         
-        # PHASE2: Implementing water body cleaning mission. 
+        # PHASE2: MAIN OPERATION - Implementing water body cleaning mission. 
         while True:
 
             # 1. Garbage collection is done, on surface and underwater level, by the Fish machine.
@@ -72,5 +72,5 @@ def main():
         logger.info(f"Error occurred in main(), error: {e}")
         raise e
 
-  
+
 main()

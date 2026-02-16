@@ -101,6 +101,8 @@ class FishPipeline:
             # Reading the frame of visual feed
             frame = self.vision_input.read()                             
             if frame is None:
+                logger.info(f"Frame is not captured")
+                
                 # If frame is not received, then abort the mission
                 self.mission_planner_obj.abort_mission()
 

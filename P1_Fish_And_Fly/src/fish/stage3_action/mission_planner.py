@@ -526,28 +526,29 @@ class MissionPlanner:
 
             # Return to the HQ immediately.
             HQ_point = self.mission_cfg.hq_point
-
-            # Defining current position and depth
-            curr_pos = self.navigator.current_position
-            curr_operation_depth = curr_pos.z
             
-            # Moving forward stepwise to reach destination i.e. HQ
+            # Moving forward step-wise to reach home destination i.e. HQ
             while not self.navigator.reached_destination(destination= HQ_point):
                 logger.info(f"***************Enter while loop********************")
 
+                # Defining current position and depth
+                curr_pos = self.navigator.current_position
+                curr_operation_depth = curr_pos.z
+
                 # If currently in underwater, first ascend to the surface level, then approach the HQ.
                 if curr_operation_depth == self.depths.underwater:
-                    curr_pos.z = self.depths.surface
-                    reached_up = self.simulate_step_forward(target_position= curr_pos)
+                    curr_surface_pos = Waypoint(curr_pos.x, curr_pos.y, self.depths.surface)
+
+                    # Ascend vertically upwards to surface level
+                    reached_up = self.simulate_step_forward(target_position= curr_surface_pos)
                     if not reached_up:
-                        logger.info(f"MissionPlanner -> abort_mission(): Error occurred in reaching the water surface level.")
+                        logger.info(f"MissionPlanner -> abort_mission(): Error occurred in reaching the water surface level")
                         self._get_manual_help()
                         break
 
                 # Now the fish machine is currently in surface, so directly traverse to the HQ.
                 next_robot_pos = self.navigator.get_linear_step_to_destination(destination= HQ_point)
                 reached = self.simulate_step_forward(target_position= next_robot_pos)
-                
                 if not reached:
                     logger.info(f"MissionPlanner -> abort_mission(): Simulation failed in reaching the HQ")
                     self._get_manual_help()
@@ -556,7 +557,7 @@ class MissionPlanner:
             
             self.notifier.raise_alert(AlertType.HARD_ABORT, "Mission aborted in middle of water body cleaning", {"last_active_checkpoint": self.freeze_mission_data})
 
-            logger.info(f"MissionPlanner -> abort_mission(): ENDS, reached HQ on its own, CHECK-> curr_pos: {curr_pos}")
+            logger.info(f"MissionPlanner -> abort_mission(): ENDS, reached HQ on its own, CHECK-> POSITION MUT BE HQ: {self.navigator.current_position}")
             return
 
 
