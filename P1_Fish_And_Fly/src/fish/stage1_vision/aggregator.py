@@ -7,7 +7,7 @@ from src.fish.stage1_vision.entity import Detection, TrackedGarbage, TrackedStat
 from src.fish.stage2_decision.entity import ActionIntent
 from src.fish.stage2_decision.command import LifeCycleCommand, LifeCycleAction
 
-from common.logging.result_logger import OutcomeLogger
+from src.common.logging.result_logger import OutcomeLogger
 
 
 

@@ -5,12 +5,13 @@ from typing import Optional, List
 from dataclasses import dataclass
 
 class ActionStatus(Enum):
-    ACTIVE = "active"
+    ACTIVE = "active"                               # Only used in Simulation
     COLLECTED = "success"
     FAILED = "failed"
     MOVED_FORWARD = "moved"
     NONE = "nothing_happened"
     LOST = "object_lost"
+    IGNORED = "ignored_intentionally"
 
 
 @dataclass

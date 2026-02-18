@@ -2,6 +2,7 @@ import time
 from typing import Optional, Dict, Any, Tuple
 
 from src.common.logging import logger
+from src.common.utils.coverage_grid import CoverageGrid
 from src.common.projection.entity import FishFrameObject
 from src.common.alerts_and_notifications.notifier import AlertNotifier
 from src.common.alerts_and_notifications.alert_types import AlertType, ErrorType
@@ -16,7 +17,6 @@ from src.fish.stage3_action.unload_behavior import UnloadGarbageBehavior
 from src.fish.stage3_action.entity import Mission, Bin, Navigation, CostModel, DumpLocation, MissionPhase, Depths, MissionCheckpoint, ActionStatus, ActionFeedback, Waypoint
 from src.fish.stage5_simulation.entity import SimulationVisualization
 from src.fish.stage5_simulation.sim_bridge import SimulationBridge
-
 
 
 class MissionPlanner:
@@ -45,8 +45,9 @@ class MissionPlanner:
             garbage_dump= dump_location_cfg,
             depths = self.mission_cfg.depths
         )
-        self.sim_bridge = SimulationBridge(simulation_cfg = sim_visualization_cfg)                                                                # Connection to PyBullet Simulation
-
+        self.sim_bridge = SimulationBridge(simulation_cfg = sim_visualization_cfg)                          # Connection to PyBullet Simulation
+        self.coverage_grid = CoverageGrid(size = 100)                                                       # For UI Navigation Visualization
+        
         self.phase = MissionPhase.SURFACE    
         self.depths: Depths = mission_cfg.depths                                                            # Mission state initiated
         self.active_target = None
@@ -239,8 +240,6 @@ class MissionPlanner:
                     self.navigator.step_count += 1                                                          # Maintaining step count for trajectory logging.
                     self.navigator.log_trajectory_point() 
 
-                    # Updating fish machine's direction                                                  
-
                 else:
                     logger.info(f"MissionPlanner -> tick(): Simulation failed, error from Simulation module")
                     feedback = ActionFeedback(
@@ -311,6 +310,10 @@ class MissionPlanner:
 
             # 6. Commit Fish's pose back to Navigation (single source of truth)
             self.navigator.current_position = sim_current_position
+
+            # Coverage grid update for UI visualization
+            self.coverage_grid.update_from_pose(curr_pos= self.navigator.current_position)
+            self.coverage_grid.save()
             
             logger.info(f"MissionPlanner -> simulate_step_forward(): ENDS, after current position: {self.navigator.current_position}")
             return True

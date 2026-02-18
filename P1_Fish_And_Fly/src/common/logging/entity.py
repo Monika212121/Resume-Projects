@@ -14,4 +14,4 @@ class GarbageLogEntry:
     selected_at: Optional[int] = None
     completed_at: Optional[int] = None
     failure_reason: Optional[str] = None
-    ignore_rason: Optional[str] = None
+    ignore_reason: Optional[str] = None
