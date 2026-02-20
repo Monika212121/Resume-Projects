@@ -4,7 +4,7 @@ from typing import Dict
 from src.common.logging import logger
 from src.common.projection.entity import FishFrameObject
 
-from src.fish.stage3_action.entity import Waypoint
+from src.fish.stage3_action.entity import Waypoint, DumpLocation, MissionPhase
 from src.fish.stage5_simulation.pybullet_world import PyBulletWorld
 from src.fish.stage5_simulation.robot_controller import RobotController
 from src.fish.stage5_simulation.object_manager import ObjectManager
@@ -13,10 +13,10 @@ from src.fish.stage5_simulation.entity import SimulationVisualization
 
 
 class SimulationBridge:
-    def __init__(self, simulation_cfg: SimulationVisualization):
+    def __init__(self, simulation_cfg: SimulationVisualization, garbage_dump: DumpLocation):
         self.ENABLE_SIM_GUI = simulation_cfg.enabled_gui
 
-        self.world = PyBulletWorld()
+        self.world = PyBulletWorld(garbage_dump_location = garbage_dump)
         self.robot_controller = RobotController()
         self.object_manager = ObjectManager()
 
@@ -41,15 +41,15 @@ class SimulationBridge:
 
 
 
-    def step(self, pose: Waypoint, curr_mission_phase: str):
+    def step(self, pose: Waypoint, curr_mission_phase: MissionPhase):
 
         # Traverse Fish robot to the given position waypoint
-        self.robot_controller.teleport(pose)
+        self.robot_controller.teleport(pose, current_mission_phase= curr_mission_phase)
 
         # Update the camera view
         self.world.update_camera_follow_fish(pose)
         p.addUserDebugText(
-            curr_mission_phase,
+            curr_mission_phase.name,
             [pose.x, pose.y, pose.z + 2],
             textColorRGB=[0, 1, 0],
             lifeTime=0.1
@@ -59,6 +59,7 @@ class SimulationBridge:
 
         # Maintaining last fish position, for finding fish direction
         self.last_fish_position = pose
+        return
 
 
 
@@ -97,23 +98,23 @@ class SimulationBridge:
 
     def get_fish_curr_direction(self, curr_position: Waypoint) -> int:
         try:
-            logger.info(f"ObjectManager -> get_curr_fish_direction(), STARTS")
+            logger.info(f"SimulationBridge ->  get_curr_fish_direction(), STARTS")
 
             # Calculating delta in x_axis, for fish robot
             last_x_coord = self.last_fish_position.x
             curr_x_coord = curr_position.x
-            logger.info(f"ObjectManager -> get_curr_fish_direction(), last_pos: {self.last_fish_position}, curr_pos: {curr_position}")
+            logger.info(f"SimulationBridge ->  get_curr_fish_direction(), last_pos: {self.last_fish_position}, curr_pos: {curr_position}")
             fish_delta_x = curr_x_coord - last_x_coord
 
             # If dir = 1, then fish moving [0->100] and if dir = -1, then fish moving in [100->0] direction
             curr_fish_direction = 1 if fish_delta_x >= 0 else -1                
 
-            logger.info(f"ObjectManager -> get_curr_fish_direction(), ENDS, direction: {curr_fish_direction}")
+            logger.info(f"SimulationBridge ->  get_curr_fish_direction(), ENDS, direction: {curr_fish_direction}")
             return curr_fish_direction
         
 
         except Exception as e:
-            logger.info(f"Error occurred in ObjectManager -> get_curr_fish_direction(), error: {e}")
+            logger.info(f"Error occurred in SimulationBridge ->  get_curr_fish_direction(), error: {e}")
             raise e
 
 
@@ -123,5 +124,50 @@ class SimulationBridge:
 
 #----------------------------------------------------------------------------------------------------------------------------
 
+    # Garbage collection
+    def try_collect_garbage(self, target_track_id: int) -> bool:
+        try:
+            logger.info(f"SimulationBridge -> try_collect_garbage(): STARTS, track_id:{ target_track_id}")
+            
+            # Validate garbage existence, in simulation world
+            if not self.object_manager.exists(target_track_id):
+                logger.info(f"SimulationBridge -> try_collect_garbage(): Garbage does not exist of track_id: {target_track_id}")
+                return False
 
+            # Fetch garbage body_id
+            garbage_body_id = self.object_manager.get_body_id(track_id= target_track_id)
+            if garbage_body_id is None:
+                logger.info(f"SimulationBridge -> try_collect_garbage(): Garbage is not found of track_id: {target_track_id}")
+                return False
 
+            # Now, it is confirmed that given garbage exists in simulation world, so we can perform collection operation
+
+            # 1. Fetch fish robot's body_id
+            fish_robot_body_id = self.robot_controller.get_fish_robot_body_id()
+            if fish_robot_body_id is None:
+                logger.info(f"Fish robot does not exist")
+                return False
+            
+            # 2. Stop the Fish robot
+            self.robot_controller.stop_fish(body_id= fish_robot_body_id)
+            
+            # 3. Change visual color of spawned garbage (RED -> GREEN)
+            p.changeVisualShape(
+                objectUniqueId=garbage_body_id,
+                linkIndex=-1,
+                rgbaColor=[0.2, 1.0, 0.0, 1.0],                                                              # Bright Yellow (RGBA) = collected
+                 specularColor=[1.0, 1.0, 0.2]    # Glow effect
+            )
+
+            # 4. Mark internal object's state from ACTIVE -> COLLECTED
+            self.object_manager.mark_collected(track_id= target_track_id)
+
+           # NOTE: No need to resume the Fish robot, as it automatically moves in step() command in next tick() 
+
+            logger.info(f"SimulationBridge -> try_collect_garbage(): SUCCESS, track_id={target_track_id} visually marked as collected")
+            return True
+                        
+
+        except Exception as e:
+            logger.info(f"Error occurred in SimulationBridge -> try_collect_garbage(), error: {e}")
+            raise e

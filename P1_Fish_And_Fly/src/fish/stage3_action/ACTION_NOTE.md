@@ -36,6 +36,22 @@ A(surface) ───────▶  H (HQ)
 
 # Unloading Garbage bin
 
+Top view of the worksapce and dump-points
+
+```
+
+  (117,117)      ●       ●      (3,117)
+        ┌────────────────────────┐
+        │                        │
+        │                        │
+   ●    │                        │    ●
+        │                        │
+        │                        │
+        └────────────────────────┘
+  (3,3)        ●        ●      (117,3)
+
+```
+
 - I am using Cost based deterministic minimization function to locate the nearest D-point(dump/docking point).
 - Correct cost decomposition (industry-grade)
 - Let’s rewrite your cost in a robot-usable way:
@@ -151,6 +167,12 @@ Or even: ```uncertainty = distance_since_last_fix```
 ✔ used in long-range AUVs
 
 
+
+## Garbage grasping lifecycle:
+
+- Planner orchestrates.
+- Simulation validates physics.
+- Manipulator resolves interaction semantics.
 
 
 ## Goal of the Environment Abstraction

@@ -17,6 +17,5 @@ class WorldObject:
     class_id: int                   # semantic class (garbage, etc.)
     class_name : str
     world_position: Waypoint        # (x, y, z) in WORLD frame
-    radius: float                   # physical size for collision / pickup
     state: ActionStatus = ActionStatus.ACTIVE
     frame: CoordinateFrame = CoordinateFrame.WORLD

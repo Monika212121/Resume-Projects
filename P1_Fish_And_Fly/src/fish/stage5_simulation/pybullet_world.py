@@ -4,19 +4,20 @@ from typing import List
 
 from src.common.logging import logger
 
-from src.fish.stage3_action.entity import Waypoint
-
-X_MIN, X_MAX = 0, 100
-Y_MIN, Y_MAX = 0, 100
-Z_MIN, Z_MAX = -8, 0
+from src.fish.stage3_action.entity import Waypoint, DumpLocation
+from src.fish.stage5_simulation.constants import WORKSPACE_BOUNDS
 
 
 
 class PyBulletWorld:
-    def __init__(self, gui: bool = True):
+    def __init__(self, garbage_dump_location: DumpLocation, gui: bool = True):
         self.gui = gui
         self.connected = False
         self.workspace_ids = []
+
+        self.physics_client_id = None
+        self.dump_points: List[Waypoint] = garbage_dump_location.d_points
+        self.dump_point_ids: List[int] = []
 
 
     def connect(self, enable_GUI: bool = False):
@@ -24,9 +25,9 @@ class PyBulletWorld:
             return
 
         if enable_GUI:
-            p.connect(p.GUI)
+            self.physics_client_id = p.connect(p.GUI)
         else:
-            p.connect(p.DIRECT)
+            self.physics_client_id = p.connect(p.DIRECT)
 
         
         p.setGravity(0, 0, 0)
@@ -49,6 +50,9 @@ class PyBulletWorld:
         p.configureDebugVisualizer(p.COV_ENABLE_RGB_BUFFER_PREVIEW, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, 0)
+
+        # Create dump points on the boundary of the workspace
+        self.spawn_dump_points()
 
         self.connected = True
         return
@@ -78,31 +82,15 @@ class PyBulletWorld:
 
 
 
-    def create_wall(self, half_extents: List[float], position: List[float]):
-        visual = p.createVisualShape(
-            p.GEOM_BOX,
-            halfExtents=half_extents,
-            rgbaColor=[0, 0.5, 1, 0.15],                                                                    # transparent water blue
-        )
-
-        collision = p.createCollisionShape(
-            p.GEOM_BOX,
-            halfExtents=half_extents,
-        )
-
-        p.createMultiBody(
-            baseMass=0,
-            baseCollisionShapeIndex=collision,
-            baseVisualShapeIndex=visual,
-            basePosition=position,
-        )
-
-
-
     def create_water_cuboid(self):
         logger.info(f"PyBulletWorld -> create_water_cuboid(): STARTS")
 
         thickness = 0.1
+
+        X_MIN, X_MAX = WORKSPACE_BOUNDS["x_min"], WORKSPACE_BOUNDS["x_max"]
+        Y_MIN, Y_MAX = WORKSPACE_BOUNDS["y_min"], WORKSPACE_BOUNDS["y_max"]
+        Z_MIN, Z_MAX = WORKSPACE_BOUNDS["z_min"], WORKSPACE_BOUNDS["z_max"]
+
         x_mid = (X_MIN + X_MAX) / 2
         y_mid = (Y_MIN + Y_MAX) / 2
         z_mid = (Z_MIN + Z_MAX) / 2
@@ -148,4 +136,77 @@ class PyBulletWorld:
         )
 
         logger.info(f"PyBulletWorld -> create_water_cuboid(): ENDS")
+        return
+    
+
+
+    def create_wall(self, half_extents: List[float], position: List[float]):
+        visual = p.createVisualShape(
+            p.GEOM_BOX,
+            halfExtents=half_extents,
+            rgbaColor=[0, 0.5, 1, 0.15],                                                                    # transparent water blue
+        )
+
+        collision = p.createCollisionShape(
+            p.GEOM_BOX,
+            halfExtents=half_extents,
+        )
+
+        p.createMultiBody(
+            baseMass=0,
+            baseCollisionShapeIndex=collision,
+            baseVisualShapeIndex=visual,
+            basePosition=position,
+        )
+
+        return
+
+
+
+    def spawn_dump_points(self):
+        """
+        Spawn dump point stations in the buffer area.
+        Each dump point is a static colored box.
+        """
+        # Dump points are taken from `action.yaml` config file
+        dump_points = self.dump_points
+
+        # Cube sahped stations
+        half_extents = [2.0, 2.0, 1.0]                     # 2x2x0.5 box
+
+        collision_shape = p.createCollisionShape(
+            shapeType=p.GEOM_BOX,
+            halfExtents=half_extents,
+            physicsClientId=self.physics_client_id
+        )
+
+        visual_shape = p.createVisualShape(
+            shapeType=p.GEOM_BOX,
+            halfExtents=half_extents,
+            rgbaColor=[1.0, 0.6, 0.0, 1.0],                 # orange
+            physicsClientId=self.physics_client_id
+        )
+
+
+        for idx, dp in enumerate(dump_points):
+            body_id = p.createMultiBody(
+                baseMass=0.0,                               # static
+                baseCollisionShapeIndex=collision_shape,
+                baseVisualShapeIndex=visual_shape,
+                basePosition=[dp.x, dp.y, dp.z + 0.50],     # sits on surface
+                physicsClientId=self.physics_client_id
+            )
+
+            p.changeVisualShape(
+                body_id,
+                -1,
+                rgbaColor=[1.0, 0.7, 0.2, 1.0],
+                physicsClientId=self.physics_client_id
+            )
+
+            self.dump_point_ids.append(body_id)
+
+            logger.info(f"Spawned Dump Point {idx} at ({dp.x}, {dp.y}, {dp.z})")
+
+        logger.info(f"Total dump points spawned: {len(self.dump_point_ids)}")
         return
