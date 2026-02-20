@@ -3,6 +3,7 @@
 import cv2
 
 from src.common.logging import logger
+from src.common.utils.mission import action_is_allowed
 from src.common.entity.heartbeat import SystemHeartbeat
 from src.common.visualization.visualizer import Visualizer
 from src.common.config.configuration import ConfigurationManager
@@ -183,7 +184,7 @@ class FishPipeline:
                     navigation_only = True               
 
             # Checking if taking action is allowed or not.
-            if not self.mission_planner_obj.action_is_allowed():
+            if not action_is_allowed(current_mission_phase= self.mission_planner_obj.phase):
                 heartbeat = SystemHeartbeat.now(
                     mission_phase= self.mission_planner_obj.phase,
                     position= self.mission_planner_obj.navigator.current_position,

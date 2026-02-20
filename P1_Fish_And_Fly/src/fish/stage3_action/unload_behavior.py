@@ -1,12 +1,13 @@
 # Aim: Implement a sub-mission of unloading garbage bin, assigned in middle of the main cleaning mission.
+from typing import List
 
 from src.common.logging import logger
-from src.common.alerts_and_notifications.notifier import AlertNotifier, AlertType, NotificationType
+from src.common.alerts_and_notifications.notifier import AlertNotifier
 
 from src.fish.stage3_action.navigation import PathNavigator
 from src.fish.stage3_action.cost_models import CostCalculator
 from src.fish.stage3_action.environment.mock_env import MockEnvironmentModel
-from src.fish.stage3_action.entity import CostModel, DumpLocation, MissionCheckpoint, Depths, Waypoint
+from src.fish.stage3_action.entity import CostModel, DumpLocation, Depths, Waypoint
 
 
 # When Pybullet is ready, implement the below code.
@@ -31,57 +32,52 @@ class UnloadGarbageBehavior:
         self.env_model = MockEnvironmentModel(current= 0.5, risk= 0.2, uncertainity= 0.1)
         self.cost_calculator = CostCalculator(cost_model_cfg= self.cost_config)
         
+        self.unload_counter: int = 0
+        self.dump_points_used: List[Waypoint] = []
+        self.last_best_d_point: Waypoint = Waypoint(0.0, 0.0, 0.0)
 
 
-    def unload_garbage(self, checkpoint: MissionCheckpoint) -> bool:
+
+    def find_best_dump_point(self, current_position: Waypoint) -> Waypoint:
         try:
-            logger.info(f"unload_garbage(): STARTS")
+            logger.info(f"UnloadGarbageBehavior -> find_best_dump_point(): STARTS")
 
-            # 1. Freeze the current mission data before start UNLOADING PROCESS.
-            self.mission_checkpoint = checkpoint
-            self.notifier.raise_alert(AlertType.BIN_FULL, message= "Unloading phase started", metadata= {"mission_checkpoint": self.mission_checkpoint})
-
-            curr_pos = self.mission_checkpoint.last_position
-
-            # 2. Finding the best dump point after calculating cost for all the d-points.          
-            best_docking_point = min(self.d_points, key= lambda d_pt : self.cost_calculator.calculate_docking_cost(target_pos = d_pt, current_pos = curr_pos, env = self.env_model))                                                                                                
-            logger.info(f"unload_garbage(): Best_docking_point is : {best_docking_point}")
-
-            # 3. Approach the chosen best d_point. 
-            curr_operation_depth = curr_pos.z
-
-            # Case1: If currently in surface level, directly approach dump point.
-            if curr_operation_depth == self.depths.surface:
-                reached_D = self.navigator.move_to(target_position= best_docking_point)
-                if not reached_D:
-                    logger.info(f"unload_garbage(): Error occurred in reaching the best d_point.")
-                    return False
-
-            # Case2: If currently in underwater, first ascend to the surface level, then approach the dump point.
-            else: 
-                # First move up vertically to the surface level.
-                surface_current_pos = Waypoint(curr_pos.x, curr_pos.y, self.depths.surface)
-
-                reached_up = self.navigator.move_to(target_position= surface_current_pos)
-                if not reached_up:
-                    logger.info(f"unload_garbage(): Error occurred in reaching the water surface level.")
-                    return False
-
-                # Then move towards the best d_point.
-                reached_D = self.navigator.move_to(target_position= best_docking_point)
-                if not reached_D:
-                    logger.info(f"unload_garbage(): Error occurred in reaching the best d_point.")
-                    return False
-                
-            # TODO: Return from best docking point to the resume point.
+            # Finding the best dump point after calculating cost for all the d-points.          
+            best_docking_point = min(self.d_points, key= lambda d_pt : self.cost_calculator.calculate_docking_cost(target_pos = d_pt, current_pos = current_position, env = self.env_model))                                                                                                
             
-            logger.info(f"unload_garbage(): ENDS")
-            self.notifier.raise_notification(NotificationType.GARBAGE_UNLOADING_ENDED, message= "unloading phase ended", metadata= {"resume_waypoint": self.mission_checkpoint.last_position})
-            return True
+            # Updating last d-point
+            self.last_best_d_point = best_docking_point
+
+            logger.info(f"UnloadGarbageBehavior -> find_best_dump_point(): ENDS, Best_docking_point is : {best_docking_point}")
+            return best_docking_point
 
 
         except Exception as e:
-            logger.info(f"Error occurred in unload_garbage(), error: {e}")
+            logger.info(f"Error occurred in UnloadGarbageBehavior -> find_best_dump_point(), error: {e}")
             raise e
 
 
+
+    def resolve_unload_garbage(self) -> None:
+        try:
+            logger.info(f"UnloadGarbageBehavior -> resolve_unload_garbage(): STARTS")
+
+            # Update the unload garbage counter
+            self.unload_counter += 1
+
+            # Updating the used dump_points list, this function is called, only when garbage unload is successful.
+            # It means the last dump_point is used.
+            self.dump_points_used.append(self.last_best_d_point)
+
+            logger.info(f"UnloadGarbageBehavior -> resolve_unload_garbage(): ENDS")
+            return
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in UnloadGarbageBehavior -> resolve_unload_garbage(), error: {e}")
+            raise e
+
+
+
+    def get_all_used_dump_points(self):
+        return self.dump_points_used

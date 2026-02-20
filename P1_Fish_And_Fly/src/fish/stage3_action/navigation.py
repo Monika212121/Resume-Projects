@@ -328,10 +328,10 @@ class PathNavigator:
 
 
 
-    def reached_destination(self, destination: Waypoint) -> bool:
+    def is_reached_destination(self, target_position: Waypoint) -> bool:
         try:
             is_reached = False
-            if self.current_position == destination:
+            if self.current_position == target_position:
                 is_reached = True
             
             logger.info(f"PathNavigator -> reached_destination(): ENDS, is_reached: {is_reached}") 

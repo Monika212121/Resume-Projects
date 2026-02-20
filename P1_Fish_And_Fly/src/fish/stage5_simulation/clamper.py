@@ -6,7 +6,7 @@ from src.fish.stage5_simulation.constants import WORKSPACE_BOUNDS
 
 
 
-def clamp_garbage_position(position: Waypoint):
+def clamp_position(position: Waypoint) -> Waypoint:
     try:
         x = min(max(position.x, WORKSPACE_BOUNDS["x_min"]), WORKSPACE_BOUNDS["x_max"])
         y = min(max(position.y, WORKSPACE_BOUNDS["y_min"]), WORKSPACE_BOUNDS["y_max"])
@@ -14,10 +14,10 @@ def clamp_garbage_position(position: Waypoint):
 
         safe_position = Waypoint(x, y, z)
 
-        logger.info(f"clamp_garbage_position(), position: {position}, safe_position: {safe_position}")
+        logger.info(f"clamp_position(), position: {position}, safe_position: {safe_position}")
         return safe_position
 
 
     except Exception as e:
-        logger.info(f"Error occurred in clamp_garbage_position(), error: {e}")
-        raise e  
+        logger.info(f"Error occurred in clamp_position(), error: {e}")
+        raise e

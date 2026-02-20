@@ -3,7 +3,7 @@ import pybullet as p
 from src.common.logging import logger
 
 
-def create_garbage_body(position, radius , color = (0.8, 0.2, 0.2, 1.0)) -> int:
+def create_garbage_body(position, radius = 0.30, color = (0.8, 0.2, 0.2, 1.0)) -> int:
     logger.info(f"create_garbage_body(): position: {position}, radius: {radius}, color: {color}")
 
 

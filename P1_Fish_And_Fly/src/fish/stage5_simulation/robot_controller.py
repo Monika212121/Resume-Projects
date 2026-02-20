@@ -1,10 +1,13 @@
+import time
+import numpy as np
 import pybullet as p
 from typing import Optional, Tuple
 
 from src.common.logging import logger
 
-from src.fish.stage3_action.entity import Waypoint
-from src.fish.stage5_simulation.constants import WORKSPACE_BOUNDS
+from src.fish.stage3_action.entity import Waypoint, MissionPhase
+from src.fish.stage5_simulation.clamper import clamp_position
+from src.fish.stage5_simulation.constants import SLOW_TELEPORT_PHASES
 
 
 
@@ -13,12 +16,16 @@ class RobotController:
         self.fish_robot_id: Optional[int] = None
 
 
+    def get_fish_robot_body_id(self) -> Optional[int]:
+        return self.fish_robot_id
+    
+
     def spawn_fish_robot(self):
-        collision = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.5, 0.2, 0.15])
+        collision = p.createCollisionShape(p.GEOM_BOX, halfExtents=[1.0, 0.4, 0.30])
         visual = p.createVisualShape(
             p.GEOM_BOX,
-            halfExtents=[0.5, 0.2, 0.15],
-            rgbaColor=[0.2, 0.6, 0.9, 1.0],
+            halfExtents=[1.0, 0.4, 0.30],
+            rgbaColor=[0.18, 0.18, 0.18, 1.0],
         )
 
         self.fish_robot_id = p.createMultiBody(
@@ -32,7 +39,7 @@ class RobotController:
 
 
 
-    def teleport(self, pose: Waypoint):
+    def teleport(self, pose: Waypoint, current_mission_phase: MissionPhase):
         logger.info(f"RobotController -> teleport(): STARTS, pose: {pose}")
 
         if self.fish_robot_id is None:
@@ -42,15 +49,31 @@ class RobotController:
         if p.getConnectionInfo()["isConnected"] == 0:
             raise RuntimeError("PyBullet is not connected. Did you forget sim_bridge.start()?")
 
-        # Adding workspace constraints, avoiding Fish robot to go outside the defined workspace
-        safe_position = self.clamp_workspace_position(pos= pose)
+        # Clamping Fish robot position, to avoid going outside the defined operation workspace 
+        allowed_to_exit_safe_boundary = current_mission_phase in SLOW_TELEPORT_PHASES
+
+        # Fish machine can cross this safe boundary, only when in UNLOADING/ ABORT/ RETURN phase
+        safe_position = pose if allowed_to_exit_safe_boundary else clamp_position(position=pose)
+
         logger.info(f"RobotController -> teleport(), safe_position: {safe_position}")
 
-        p.resetBasePositionAndOrientation(
-            self.fish_robot_id,
-            [safe_position.x, safe_position.y, safe_position.z],
-            [0, 0, 0, 1],
-        )
+        # CASE1: If mission phase is SLOW_TELEPORT_PHASES, then traverse slower
+        if allowed_to_exit_safe_boundary:
+            fish_current_pos, _ = p.getBasePositionAndOrientation(self.fish_robot_id)
+            start = Waypoint(*fish_current_pos)
+            self._slow_teleport(
+                start=start,
+                end=safe_position,
+                steps=40,
+                step_delay=0.04,  # slower & visible
+            )
+        # CASE2: Normal traversal
+        else:
+            p.resetBasePositionAndOrientation(
+                self.fish_robot_id,
+                [safe_position.x, safe_position.y, safe_position.z],
+                [0, 0, 0, 1],
+            )
 
         '''
         p.resetDebugVisualizerCamera(
@@ -63,6 +86,29 @@ class RobotController:
         
         logger.info(f"RobotController -> teleport(): ENDS")
         return
+
+
+
+    def _slow_teleport(self, start: Waypoint, end: Waypoint, steps: int = 30, step_delay: float = 0.03):
+        for alpha in np.linspace(0.0, 1.0, steps):
+            interp_pos = Waypoint(
+                x=start.x + alpha * (end.x - start.x),
+                y=start.y + alpha * (end.y - start.y),
+                z=start.z + alpha * (end.z - start.z),
+            )
+
+            p.resetBasePositionAndOrientation(
+                self.fish_robot_id,
+                [interp_pos.x, interp_pos.y, interp_pos.z],
+                [0, 0, 0, 1],
+            )
+
+            p.stepSimulation()
+            time.sleep(step_delay)
+        
+        
+        return
+
 
 
     def get_fish_robot_pose(self) -> Optional[Tuple[float, float, float, float]]:
@@ -92,10 +138,14 @@ class RobotController:
 
 
 
-    def clamp_workspace_position(self, pos: Waypoint) -> Waypoint:
-        x = min(max(pos.x, WORKSPACE_BOUNDS["x_min"]), WORKSPACE_BOUNDS["x_max"])
-        y = min(max(pos.y, WORKSPACE_BOUNDS["y_min"]), WORKSPACE_BOUNDS["y_max"])
-        z = min(max(pos.z, WORKSPACE_BOUNDS["z_min"]), WORKSPACE_BOUNDS["z_max"])
-
-        safe_position = Waypoint(x, y, z)
-        return safe_position
+    def stop_fish(self, body_id: int):
+        """
+        Physically stop fish movement in simulation.
+        """
+        # Zero linear + angular velocity
+        p.resetBaseVelocity(
+            objectUniqueId=body_id,
+            linearVelocity=[0, 0, 0],
+            angularVelocity=[0, 0, 0]
+        )
+        return
