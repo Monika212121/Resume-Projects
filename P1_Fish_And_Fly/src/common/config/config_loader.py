@@ -79,7 +79,7 @@ def load_machine_config(machine: str) -> ConfigBox:
 
 
     #----------LOAD STAGE-SPECIFIC CONFIG-------------
-    stages = ["vision","language","decision","action","simulation"]
+    stages = ["vision","decision","action","simulation"]
 
     for stage in stages:
         stage_config_path = configs_dir/machine/f"{stage}.yaml"

@@ -104,3 +104,17 @@ Decision Module (NEXT)
 
 --------------------------------------------------------------------------------------------------------------------------------------------
 
+## 3. Auto-training of model 
+
+- When the projct run for the first time, the training will be performed and weights will be saved in `model_result/weights/best.pt` file.
+- Calling `ensure_model_ready()` to ensure the model is trained, if not then perform training.
+```
+If model is missing → auto-train → continue pipeline.
+```
+- The above function is called before instantiating other Vision pipelines because they depend on the training weights.
+
+
+## 4. Model result
+
+- In the `model_result/FishV1` folder, all files inside are produced from the YOLO model training.
+- The files show training result, curve, logs of 100 epochs, detection on validation dataset, etc.

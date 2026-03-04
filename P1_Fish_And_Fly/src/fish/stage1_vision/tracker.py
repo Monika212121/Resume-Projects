@@ -1,7 +1,7 @@
 # Object tracking for underwater objects
 
-from box import ConfigBox
 from src.common.logging import logger
+from src.fish.stage1_vision.entity import TrackingConfig
 
 
 class GarbageTracker:
@@ -9,7 +9,7 @@ class GarbageTracker:
     Object tracking using "BORT-SORT" algorithmn inside Ultralytics YOLO.
     NOTE: Tracking is a thin wrapper around Detection, not a post-process. Tracking is part of inference process.
     """
-    def __init__(self, tracker_cfg: ConfigBox):
+    def __init__(self, tracker_cfg: TrackingConfig):
         self.tracking_enabled = tracker_cfg.enabled
         self.tracker_cfg = tracker_cfg
 

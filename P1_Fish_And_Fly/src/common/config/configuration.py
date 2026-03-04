@@ -1,4 +1,6 @@
+from typing import List
 from box import ConfigBox
+from dataclasses import fields
 
 from src.common.config.config_loader import load_machine_config
 from src.common.visualization.entity import PerceptionVisualization
@@ -8,6 +10,7 @@ from src.fly.stage2_action.entity import MonitorConfig
 from src.fly.stage2_action.entity import FlightControllerConfig
 
 from src.fish.stage5_simulation.entity import SimulationVisualization
+from src.fish.stage1_vision.entity import IOConfig, ModelParameter, YOLOModelTrainerConfig, InferenceConfig, TrackingConfig, AggregationConfig, VisionConfig
 from src.fish.stage3_action.entity import Mission, Bin, Navigation, CostWeights, VehicleModel, NormalizationLimits, CostModel, DumpLocation
 
 
@@ -29,29 +32,94 @@ class ConfigurationManager():
     
     # 1. VISION CONFIGURATIONS
     
-    def get_vision_config(self) -> ConfigBox:
-        return self._config.vision
+    def get_vision_config(self) -> VisionConfig:
+        vision_cfg = VisionConfig(
+            io= self.get_io_config(),
+            class_names= self.get_class_names(),
+            training= self.get_training_config(),
+            inference= self.get_inference_config(),
+            tracking= self.get_tracking_config(),
+            aggregation= self.get_aggregation_config()
+        )
 
-    def get_garbage_class_names(self):
-        return self._config.vision.class_names
+        return vision_cfg
+        
     
-    # Phase1: Garbage Detection(model = YOLO)
-    def get_detection_model_name(self) -> str:
-        return self._config.vision.training.model_name
+    def get_io_config(self) -> IOConfig:
+        cfg = self._config.vision.io
 
-    def get_model_trainer_config(self) -> ConfigBox:
-        return self._config.vision.training.model_parameters
+        # Mapping IO from ConfgBox ->  IOConfig object
+        cfg_dict = {}
+        for f in fields(IOConfig):
+            cfg_dict[f.name] = cfg.get(f.name, f.default)
+
+        model_io_cfg = IOConfig(**cfg_dict)
+        return model_io_cfg
+
+
+    def get_class_names(self) -> List[str]:
+        cfg = self._config.vision.class_names
+
+        class_list = list(cfg)
+        return class_list
     
-    def get_model_inference_config(self) -> ConfigBox:
-        return self._config.vision.inference
 
 
-    # Phase2: Garbage Tracking(technique = BORTSORT)
-    def get_garbage_tracking_config(self) -> ConfigBox:
-        return self._config.vision.tracking
+    def get_training_config(self) -> YOLOModelTrainerConfig:
+        model_name_used: str = self._config.vision.training.model_name
+        cfg = self._config.vision.training.model_parameters
 
+        # Mapping training parameters from ConfgBox ->  ModelParameter object
+        cfg_dict = {}
+        for f in fields(ModelParameter):
+            cfg_dict[f.name] = cfg.get(f.name, f.default)
+
+        model_trainer_cfg = YOLOModelTrainerConfig(
+            model_name= model_name_used,
+            model_parameters= ModelParameter(**cfg_dict)
+        )
+
+        return model_trainer_cfg
+
+
+    def get_inference_config(self) -> InferenceConfig:
+        cfg = self._config.vision.inference
+
+        # Mapping inference from ConfgBox ->  InfernceConfig object
+        cfg_dict = {}
+        for f in fields(InferenceConfig):
+            cfg_dict[f.name] = cfg.get(f.name, f.default)
+
+        model_inference_cfg = InferenceConfig(**cfg_dict)
+        return model_inference_cfg
     
+
+    # Used technique = BORTSORT
+    def get_tracking_config(self) -> TrackingConfig:
+        cfg = self._config.vision.tracking
+
+        # Mapping tracking from ConfgBox ->  TrackingConfig object
+        cfg_dict = {}
+        for f in fields(TrackingConfig):
+            cfg_dict[f.name] = cfg.get(f.name, f.default)
+
+        model_tracking_cfg = TrackingConfig(**cfg_dict)
+        return model_tracking_cfg
     
+
+    def get_aggregation_config(self) -> AggregationConfig:
+        cfg = self._config.vision.aggregation
+
+        # Mapping aggregation from ConfgBox ->  AggregationConfig object
+        cfg_dict = {}
+        for f in fields(AggregationConfig):
+            cfg_dict[f.name] = cfg.get(f.name, f.default)
+
+        model_aggregation_cfg = AggregationConfig(**cfg_dict)
+        return model_aggregation_cfg
+    
+
+        
     # 2. DECISION CONFIGURATIONS
 
     def get_decision_config(self) -> ConfigBox:
@@ -67,14 +135,8 @@ class ConfigurationManager():
         return self._config.decision.planner
     
 
-    # 3. LANGUAGE CONFIGURATIONS
-
-    def get_language_config(self) -> ConfigBox:
-        return self._config.language
-    
-
-
-    # 4. ACTION CONFIGURATIONS
+ 
+    # 3. ACTION CONFIGURATIONS
 
     def get_action_config(self) -> ConfigBox:
         return self._config.action

@@ -2,7 +2,7 @@ from typing import List, Dict, Tuple, Set
 
 from src.common.logging import logger
 
-from src.fish.stage1_vision.entity import Detection, TrackedGarbage, TrackedState
+from src.fish.stage1_vision.entity import AggregationConfig, Detection, TrackedGarbage, TrackedState
 
 from src.fish.stage2_decision.entity import ActionIntent
 from src.fish.stage2_decision.command import LifeCycleCommand, LifeCycleAction
@@ -15,7 +15,7 @@ class GarbageAggregator:
     """
     Aggregates detections over time using track_id
     """
-    def __init__(self, aggregator_cfg):
+    def __init__(self, aggregator_cfg: AggregationConfig):
         self.max_history: int = aggregator_cfg.max_history
         self.stable_age: int = aggregator_cfg.stable_age
         self.max_idle_frames: int = aggregator_cfg.max_idle_frames
