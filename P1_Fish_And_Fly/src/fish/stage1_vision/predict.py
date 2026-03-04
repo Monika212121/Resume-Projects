@@ -1,8 +1,16 @@
+# NOTE: This file is not part of the main pipeline, it is just for quick sanity check to see detections are accurate or not(in an image)
+# How to use: Just give the image path, you want to infer, in main() of this file.
+# How to test: In the terminal, run this file, run command `python src/fish/stage1_vision/predict.py` and we will see the detections in the given image.
+
+
 import cv2
-from src.common.config.configuration import ConfigurationManager
-from src.fish.stage1_vision.detector import GarbageDetector
-from src.fish.stage1_vision.tracker import GarbageTracker
+
 from src.common.logging import logger
+from src.common.config.configuration import ConfigurationManager
+
+from src.fish.stage1_vision.tracker import GarbageTracker
+from src.fish.stage1_vision.detector import GarbageDetector
+
 
 
 def predict_image(image_path: str):
@@ -13,8 +21,8 @@ def predict_image(image_path: str):
         fish_cfg_mg = ConfigurationManager("fish")
 
         # Loading configuratiosn for inference and tracking
-        garbage_detector_cfg = fish_cfg_mg.get_model_inference_config()
-        garbage_tracker_cfg = fish_cfg_mg.get_garbage_tracking_config()
+        garbage_detector_cfg = fish_cfg_mg.get_inference_config()
+        garbage_tracker_cfg = fish_cfg_mg.get_tracking_config()
 
         # Creating objects of detector and tracker
         garbage_detector_obj = GarbageDetector(garbage_detector_cfg)
@@ -37,10 +45,10 @@ def predict_image(image_path: str):
 
 
     except Exception  as e:
-        logger.info(f"Error occurred in predict_image(): {e}")
+        logger.info(f"Error occurred in predict_image(), error: {e}")
         raise e
 
 
 
 if __name__ == "__main__":
-    predict_image("data/yolo/images/val/119.jpg")
+    predict_image("dataset/test_images/test_img6.jfif")

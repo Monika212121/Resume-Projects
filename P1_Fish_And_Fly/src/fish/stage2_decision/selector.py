@@ -1,4 +1,5 @@
 # NOTE: This is pure decision memory, not vision memory.
+
 from typing import Optional, List, Tuple
 
 from src.common.logging import logger
@@ -62,8 +63,8 @@ class SelectionLock:
                     selection_count= self.selection_counter
                 )
 
-                # Release the locked target, as it is LOST
-                self.active_track_id = None
+                # Release the locked target, in case of LOST target
+                self.release_target()
 
 
         # Case2: NEW TARGET: If no target is locked at present
@@ -91,7 +92,10 @@ class SelectionLock:
         """
         logger.info(f"SelectorLock -> release(): STARTS, before releasing track_id = {self.active_track_id}")
 
-        self.active_track_id = None                                                                         # triggered only when action_feedback status = SUCCESS / FAILED
+        # NOTE: Release will be triggered, when action_feedback's,
+        # status = SUCCESS / FAILED / LOST 
+        # not when status = SELECT / UNATTEMPTED
+        self.active_track_id = None                  
 
         logger.info(f"SelectorLock -> release(): ENDS, after releasing track_id = {self.active_track_id}")
         return

@@ -4,10 +4,21 @@ rules:
   min_age: 5
   min_conf: 0.4
   allowed_classes:
-    - plastic
-    - metal
-    - rubber
-    - other
+    - algae_bloom
+    - big_rock
+    - crab
+    - dangerous_animal
+    - fish
+    - fishing_net
+    - fishing_rope
+    - glass_bottle
+    - human
+    - jellyfish
+    - metal_can
+    - plastic_bag
+    - plastic_bottle
+    - starfish
+    - turtle
 
 reasoner:
   class_weights:

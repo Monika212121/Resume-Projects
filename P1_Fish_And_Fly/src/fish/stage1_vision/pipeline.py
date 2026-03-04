@@ -1,12 +1,13 @@
+import os
 from typing import List
-from box import ConfigBox
 
 from src.common.logging import logger
 
+from src.fish.stage1_vision.train import ModelTrainer
 from src.fish.stage1_vision.tracker import GarbageTracker
 from src.fish.stage1_vision.detector import GarbageDetector
 from src.fish.stage1_vision.aggregator import GarbageAggregator
-from src.fish.stage1_vision.entity import Detection, TrackedGarbage
+from src.fish.stage1_vision.entity import VisionConfig, Detection, TrackedGarbage
 
 
 
@@ -14,17 +15,38 @@ class VisionPipeline:
     """
     Stage1: Vision Pipeline
     """
-    def __init__(self, vision_cfg: ConfigBox):
+    def __init__(self, vision_cfg: VisionConfig):
+        self.class_names = vision_cfg.class_names
+        self.training_config = vision_cfg.training
         self.infer_config = vision_cfg.inference
         self.tracker_config = vision_cfg.tracking
-        self.class_names = vision_cfg.class_names
         self.aggregator_config = vision_cfg.aggregation
+
+        self.model_weights_path = self.infer_config.weights
+        self.model_trainer = ModelTrainer(self.training_config)
+        self.ensure_model_ready()                                                                           # refer VISION_NOTE.md(3)
 
         self.detector = GarbageDetector(self.infer_config)
         self.tracker = GarbageTracker(self.tracker_config)
         self.aggregator = GarbageAggregator(self.aggregator_config)
-        #logger.info(f"vision init(): vision cfg: {vision_cfg}")
 
+
+
+    def ensure_model_ready(self) -> None:
+        try: 
+            logger.info("VisionPipeline -> ensure_model_ready()")
+
+            if not os.path.exists(self.model_weights_path):                                                     # check if `weights/best.pt` file exists
+                logger.warning("Weights not found. Training model..............")
+                self.model_trainer.train_yolo_model()
+
+            return
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in VisionPipeline -> ensure_model_ready(), error: {e}") 
+            raise e
+    
 
 
     def run(self, frame) -> List[TrackedGarbage]:
@@ -34,11 +56,8 @@ class VisionPipeline:
             # Loading the trained YOLO model
             detection_model = self.detector.detection_model
 
-            # Creating tracker object
-            garbage_tracker_obj = self.tracker
-
-            # Running Inference on this model
-            results = garbage_tracker_obj.infer_yolo_model(model = detection_model, frame = frame, infer_cfg = self.infer_config)
+            # Running inference on this model
+            results = self.tracker.infer_yolo_model(model = detection_model, frame = frame, infer_cfg = self.infer_config)
             
             detection_list: List[Detection] = []
 
@@ -65,5 +84,5 @@ class VisionPipeline:
 
 
         except Exception as e:
-            logger.info(f"Error occurred in VisionPipeline-> run(): {e}")  
+            logger.info(f"Error occurred in VisionPipeline -> run(), error: {e}")  
             raise e
