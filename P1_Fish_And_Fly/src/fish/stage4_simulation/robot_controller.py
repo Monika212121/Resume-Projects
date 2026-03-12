@@ -6,8 +6,8 @@ from typing import Optional, Tuple
 from src.common.logging import logger
 
 from src.fish.stage3_action.entity import Waypoint, MissionPhase
-from src.fish.stage5_simulation.clamper import clamp_position
-from src.fish.stage5_simulation.constants import SLOW_TELEPORT_PHASES
+from src.fish.stage4_simulation.clamper import clamp_position
+from src.fish.stage4_simulation.constants import SLOW_TELEPORT_PHASES
 
 
 

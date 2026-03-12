@@ -1,3 +1,6 @@
+import math
+from typing import Tuple
+
 from src.common.logging import logger
 
 from src.fish.stage3_action.entity import MissionPhase, Waypoint
@@ -46,4 +49,25 @@ def is_reached_target(current_position: Waypoint, target_position: Waypoint) -> 
 
     except Exception as e:
         logger.info(f"Error occurred in is_reached_target(), error: {e}")
+        raise e
+
+
+def get_target_distance(current_position: Tuple[float,float,float,float], target_position: Tuple[float, float, float]) -> float:
+    try:
+        
+        current_pos = Waypoint(current_position[0], current_position[1], current_position[2])
+        target_pos = Waypoint(target_position[0], target_position[1], target_position[2])
+
+        dx = abs(current_pos.x - target_pos.x)
+        dy = abs(current_pos.y - target_pos.y)
+        dz = abs(current_pos.z - target_pos.z)
+
+        distance = math.sqrt(dx*dx + dy*dy + dz*dz)       
+
+        logger.info(f"get_target_distance(): current and target position are at distance: {distance}")
+        return distance
+
+
+    except Exception as e:
+        logger.info(f"Error occurred in get_target_distance(), error: {e}")
         raise e

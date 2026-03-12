@@ -1,10 +1,15 @@
-from typing import Set, Optional
+from typing import Set, List
 
 from src.common.logging import logger
+from src.common.entity.decision_types import DecisionStatus
+from src.common.projection.entity import FishFrameObject
 from src.common.logging.garbage_csv_logger import GarbageCSVLogger, GarbageLogEntry
 
-from src.fish.stage2_decision.entity import ActionIntent
-from src.fish.stage3_action.entity import ActionFeedback, ActionStatus
+from src.fish.stage1_vision.entity import TrackedGarbage, EntityRole
+
+from src.fish.stage2_decision.entity import CategorizedObjects, LifeCycleAction, LifeCycleCommand
+
+from src.fish.stage3_action.entity import ActionStatus
 
 
 
@@ -15,54 +20,187 @@ class OutcomeLogger:
 
 
 
-    def log_action_results(self, action_intent: ActionIntent, feedback: Optional[ActionFeedback]):
-        """
-        Logs the results from the Action module.
-        
-        :param self: Belongs to the MonitorAction class.
-        :param action_intent: ActionIntent recieved from Decision module to execute action.
-        :type action_intent: ActionIntent
-        :param feedback: Action feedback passes back to Decision module after executing action.
-        :type feedback: ActionFeedback
-        """
+    def log_lost_object(self, lost_objects: List[TrackedGarbage]):
         try:
-            logger.info(f"OutcomeLogger -> log_action_results(): STARTS")
+            logger.info(f"OutcomeLogger -> log_lost_object(): STARTS, lost_objects: {lost_objects}")
+                                                                                                                                         
+            for obj in lost_objects:
+                # If already logged, then skip
+                if obj.track_id in self.logged_ids:
+                    logger.info(f"log_lost_object(): **********************SKIPPED")
+                    continue
 
-            # 1. Checking through a ONE TIME LOGGING GUARD, if so, skip logging.                               # refer ACTION_NOTES.md (3) 
-            if (action_intent.track_id in self.logged_ids) or (action_intent.track_id is None):
-                return                                                                                                                                              
+                # Determining decision result
+                decision_status = DecisionStatus.TARGET_IGNORED
+                if obj.entity_role == EntityRole.ENVIRONMENT_ENTITY:
+                    decision_status = DecisionStatus.ENVIRONMENT_OBJECT_IGNORED
+                
+                elif obj.entity_role == EntityRole.NAVIGATION_HAZARD:
+                    decision_status = DecisionStatus.HAZARD_OBJECT_AVOIDED
+                
+                new_entry = GarbageLogEntry(
+                    track_id= obj.track_id,
+                    class_name= obj.class_name,
+                    age = obj.age,
+                    avg_confidence= obj.avg_confidence,
+                    priority_score= 0.0,
+                    entity_role= obj.entity_role.name,
+                    decision_status= decision_status.name,
+                    decision_reason= decision_status.value,
+                    final_action_status= ActionStatus.LOST.name
+                )
 
-            # NOTE: When object is LOST, it wouldn't pass to the fish_pipeline(only ACTIVE objects will be passed in fish pipeline), 
-            # So I am logging LOST objects in `aggregator.py` file, and hence no feedback will be produced for them.
-            # 2. Determining the target object's final status, according to the feedback received.
-            final_state = ""
-            if feedback is None:         
-                final_state = ActionStatus.LOST
-            else:
-                final_state = feedback.status
-              
-            # 3. Creating a new entry.
-            new_entry = GarbageLogEntry(
-                track_id= action_intent.track_id,
-                class_name = action_intent.class_name,
-                first_seen_frame= 1,
-                last_seen_frame= 10,
-                final_state= final_state,
-                age = 100,
-                avg_confidence= 1.5,
-                priority_score = action_intent.priority_score
-            )
+                logger.info(f"log_lost_object(): new_entry: {new_entry}")
+                # Logging into the `garbage.csv` file.
+                self.garbage_logger.log(new_entry)                  
 
-            # 4. Logging into the `garbage.csv` file.
-            self.garbage_logger.log(new_entry)                  
-
-            # 5. Updating the logged_ids list with the new entry.
-            self.logged_ids.add(action_intent.track_id)
+                # Updating the logged_ids list with the new entry.
+                self.logged_ids.add(obj.track_id)
             
-            logger.info(f"OutcomeLogger -> create_action_results(): ENDS")
+            logger.info(f"OutcomeLogger -> log_lost_object(): ENDS")
             return 
         
         
         except Exception as e:
-            logger.error(f"Error occured in OutcomeLogger -> create_action_results(), error e: {e}")
+            logger.error(f"Error occured in OutcomeLogger -> log_lost_object(), error e: {e}")
+            raise e
+        
+
+
+    def log_non_selectable_objects(self, categorized_objects: CategorizedObjects):
+        try:
+            logger.info(f"OutcomeLogger -> log_non_selectable_objects(): STARTS")
+            
+            # Log unsafe targets (target near hazard objects)
+            for object in categorized_objects.collection_targets:
+                # If already logged, then skip
+                if object.track_id in self.logged_ids:
+                    continue
+
+                if object.decision_status == DecisionStatus.TARGET_AVOIDED:
+                    new_entry = GarbageLogEntry(
+                        track_id= object.track_id,
+                        class_name= object.class_name,
+                        age = object.age,
+                        avg_confidence= object.avg_confidence,
+                        priority_score=object.priority_score,
+                        entity_role= object.entity_role.name,
+                        decision_status= object.decision_status.name,
+                        decision_reason= object.decision_status.value,
+                        final_action_status= ActionStatus.AVOIDED.name
+                    )
+
+                    # Logging into the `garbage.csv` file.
+                    self.garbage_logger.log(new_entry)                  
+
+                    # Updating the logged_ids list with the new entry.
+                    self.logged_ids.add(object.track_id)
+
+
+            # Log environment entities
+            for object in categorized_objects.environment_entities:
+                # If already logged, then skip
+                if object.track_id in self.logged_ids:
+                    continue
+
+                new_entry = GarbageLogEntry(
+                    track_id= object.track_id,
+                    class_name= object.class_name,
+                    age = object.age,
+                    avg_confidence= object.avg_confidence,
+                    priority_score= object.priority_score,
+                    entity_role= object.entity_role.name,
+                    decision_status= object.decision_status.name,
+                    decision_reason= object.decision_status.value,
+                    final_action_status= ActionStatus.IGNORED.name
+                )
+
+                # Logging into the `garbage.csv` file.
+                self.garbage_logger.log(new_entry)                  
+
+                # Updating the logged_ids list with the new entry.
+                self.logged_ids.add(object.track_id)
+
+            # Log navigation hazards
+            for object in categorized_objects.navigation_hazards:
+                # If already logged, then skip
+                if object.track_id in self.logged_ids:
+                    continue
+
+                new_entry = GarbageLogEntry(
+                    track_id= object.track_id,
+                    class_name= object.class_name,
+                    age = object.age,
+                    avg_confidence= object.avg_confidence,
+                    priority_score= object.priority_score,
+                    entity_role= object.entity_role.name,
+                    decision_status= object.decision_status.name,
+                    decision_reason= object.decision_status.value,
+                    final_action_status= ActionStatus.AVOIDED.name
+                )
+
+                # Logging into the `garbage.csv` file.
+                self.garbage_logger.log(new_entry)                  
+
+                # Updating the logged_ids list with the new entry.
+                self.logged_ids.add(object.track_id)
+            
+
+            logger.info(f"OutcomeLogger -> log_non_selectable_objects(): ENDS")
+            return 
+        
+
+        except Exception as e:
+            logger.error(f"Error occured in OutcomeLogger -> log_non_selectable_objects(), error: {e}")
+            raise e
+
+
+
+    def log_selected_target(self, selected_object: FishFrameObject, feedback_command: LifeCycleCommand):
+        try:
+            logger.info(f"OutcomeLogger -> log_selected_target(): STARTS")
+
+            # Checking through a ONE TIME LOGGING GUARD, if so, skip logging.                               # refer ACTION_NOTES.md (3) 
+            if selected_object.track_id in self.logged_ids:
+                logger.info(f"OutcomeLogger -> log_selected_target(), This object is already logged, track_id: {selected_object.track_id}")
+                return                                                                                                                                              
+            
+            # If the target is unattempted, then skip logging, as it is yet to be handled
+            if feedback_command.action == LifeCycleAction.UNATTEMPTED:
+                logger.info(f"OutcomeLogger -> log_selected_target(), Skip logging as this object is unattempted till now")
+                return
+
+            # Determining the target object's final status, according to the feedback command received.
+            if feedback_command.action == LifeCycleAction.DONE:
+                final_status = ActionStatus.COLLECTED
+            elif feedback_command.action == LifeCycleAction.LOST:
+                final_status = ActionStatus.LOST
+            else:
+                final_status = ActionStatus.FAILED
+              
+            # Creating a new entry.
+            new_entry = GarbageLogEntry(
+                track_id= selected_object.track_id,
+                class_name= selected_object.class_name,
+                age = selected_object.age,
+                avg_confidence= selected_object.avg_confidence,
+                priority_score= selected_object.priority_score,
+                entity_role= selected_object.entity_role.name,
+                decision_status= selected_object.decision_status.name,
+                decision_reason= selected_object.decision_status.value,
+                final_action_status= final_status.name
+            )
+
+            # Logging into the `garbage.csv` file.
+            self.garbage_logger.log(new_entry)                  
+
+            # Updating the logged_ids list with the new entry.
+            self.logged_ids.add(selected_object.track_id)
+            
+            logger.info(f"OutcomeLogger -> log_selected_target(): ENDS")
+            return 
+
+
+        except Exception as e:
+            logger.error(f"Error occured in OutcomeLogger -> log_selected_target(), error e: {e}")
             raise e

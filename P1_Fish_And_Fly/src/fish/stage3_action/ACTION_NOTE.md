@@ -301,3 +301,10 @@ This ensures:
 - Clean separation between perception space, world frame, and mission space.
 
 Depth is treated as a mission-level attribute, not a perception property.
+
+
+11.) If there is no target present in the current tick, 
+
+- Then action_intent = None and I take target_track_id = (-1)
+
+- This is to avoid returning a feedback with track_id = None. A feedback, in any test case, must be valid.

@@ -1,6 +1,6 @@
 from src.common.logging import logger
-from src.common.alerts_and_notifications.notifier import AlertNotifier
 from src.common.alerts_and_notifications.alert_types import AlertType
+from src.common.alerts_and_notifications.notifier import AlertNotifier
 
 from src.fish.stage3_action.entity import Bin, Waypoint
 

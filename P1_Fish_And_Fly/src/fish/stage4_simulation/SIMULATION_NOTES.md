@@ -1,4 +1,19 @@
+# Simulation notes
 
+Control flow diagram:
+```
+Perception
+   ↓
+MissionPlanner
+   ↓
+SimulationBridge
+   ↓
+ObjectManager
+   ↓
+ObjectFactory
+   ↓
+PyBullet
+```
 
 # Perception-driven digital twin simulation
 
@@ -125,6 +140,17 @@ We will:
 - NOTE: Spawn offset is simulation-only, to allow approach & collection time.
 
 
+### Spawning shapes
+
+| Category  | Shape   | Color      |
+| --------- | ------- | ---------- |
+| Garbage   | Sphere  | Red        |
+| Collected | Sphere  | Green      |
+| Fish      | Capsule | Cyan       |
+| Plant     | Box     | Dark green |
+| Rock      | Big box | Brown      |
+| Hazard    | Cone    | Yellow     |
+
 
 ## 4.) WorldObject
 
@@ -140,3 +166,21 @@ Key invariants:
 
 
 
+## sIMUALTION OF SEMANCTI CATEGORY ITEMS
+
+sphere → (radius,)
+box → (x, y, z)
+capsule → (radius, height)
+cylinder → (radius, height)
+
+
+
+# Object Lifetime Design
+
+| Object           | Behavior       |
+| ---------------- | -------------- |
+| Garbage          | permanent      |
+| Rock             | permanent      |
+| Fish entity      | timeout + fade |
+| Plants           | timeout + fade |
+| Dangerous animal | timeout + fade |

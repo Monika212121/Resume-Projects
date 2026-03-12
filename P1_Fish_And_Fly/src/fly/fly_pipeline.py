@@ -5,9 +5,9 @@ from src.common.entity.heartbeat import SystemHeartbeat
 from src.common.config.configuration import ConfigurationManager
 from src.common.alerts_and_notifications.notifier import AlertNotifier, AlertType
 
-from src.fly.stage2_action.entity import FishStatus, StateDeltas
-from src.fly.stage2_action.flight_controller import FlightController
-from src.fly.stage2_action.heartbeat_monitor import HeartbeatMonitor
+from src.fly.stage1_action.entity import FishStatus, StateDeltas
+from src.fly.stage1_action.flight_controller import FlightController
+from src.fly.stage1_action.heartbeat_monitor import HeartbeatMonitor
 
 
 
@@ -15,8 +15,6 @@ class FlyPipeline:
     def __init__(self, fly_cfg_mg: ConfigurationManager):
 
         # Loading the Fly's configurations
-        #self.vision_config = fly_cfg_mg.get_vision_config()
-
         self.controller_config = fly_cfg_mg.get_controller_config()
         self.monitor_config = fly_cfg_mg.get_monitor_config()
 

@@ -22,7 +22,7 @@ class GarbageVideoOverlay:
         self.threshold_distance = 0.08
 
 
-    def draw(self, frame: np.ndarray, viz_entity: VisualizationEntity, resized_bbox: Optional[Tuple[int, int, int, int]], sel_world_object: FishFrameObject) -> np.ndarray:
+    def draw(self, frame: np.ndarray, viz_entity: VisualizationEntity, resized_bbox: Optional[Tuple[int, int, int, int]], selected_object: Optional[FishFrameObject]) -> np.ndarray:
         """
         Draw all visual objects and selection highlight.
         """
@@ -38,9 +38,9 @@ class GarbageVideoOverlay:
         # 3. Draw grasp threshold line (BLUE)
         frame = self._draw_grasp_threshold(frame = frame, threshold_distance = self.threshold_distance)
 
-        # 4. Draw world coords(world_x, world_y) (YELLOW)
-        if resized_bbox and sel_world_object:
-            frame = self._draw_world_coords(frame, resized_bbox, sel_world_object)
+        # 4. Draw coords(rel_x, rel_y) w.r.t fish machine (YELLOW)
+        if selected_object and resized_bbox:
+            frame = self._draw_fish_frame_coords(frame, resized_bbox, selected_object)
 
         return frame
 
@@ -103,7 +103,7 @@ class GarbageVideoOverlay:
         return frame
 
 
-    def _draw_world_coords(self, frame: np.ndarray, resized_bbox: Tuple[int, int, int, int], world_obj: FishFrameObject) -> np.ndarray:
+    def _draw_fish_frame_coords(self, frame: np.ndarray, resized_bbox: Tuple[int, int, int, int], world_obj: FishFrameObject) -> np.ndarray:
            
         # NOTE: These coordinates are already resized w.r.t. resized frame.
         x1, y1, x2, y2 = resized_bbox

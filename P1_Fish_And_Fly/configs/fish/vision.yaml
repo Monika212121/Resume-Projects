@@ -2,7 +2,7 @@
 # Models used: YOLOv8s
 
 visualization:
-  enabled_gui: true
+  enabled_gui: false
 
 
 io:
@@ -10,7 +10,7 @@ io:
   camera: 
     device_id: 0
   video:
-    path: dataset/test_footage/test1.mp4
+    path: dataset/test_footage/demo8.mp4
 
 
 class_names:
@@ -64,3 +64,27 @@ aggregation:
   max_history: 15
   stable_age: 5                                       # no. of frames an object is seen
   max_idle_frames: 30                                 # no. of frames an object is not seen
+
+
+# Semantic categories
+categories:
+  collection_targets:
+    - algae_bloom
+    - fishing_net
+    - fishing_rope
+    - glass_bottle
+    - metal_can
+    - plastic_bag
+    - plastic_bottle
+
+  environmental_entities:
+    - human
+    - fish
+    - crab
+    - jellyfish
+    - starfish
+    - turtle
+
+  navigation_hazards:
+    - dangerous_animal
+    - big_rock

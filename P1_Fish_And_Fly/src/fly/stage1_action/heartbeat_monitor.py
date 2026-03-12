@@ -3,7 +3,7 @@ import time
 from src.common.logging import logger
 from src.common.entity.heartbeat import SystemHeartbeat
 
-from src.fly.stage2_action.entity import MonitorConfig, StateDeltas, FishStatus
+from src.fly.stage1_action.entity import MonitorConfig, StateDeltas, FishStatus
 
 
 

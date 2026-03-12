@@ -47,7 +47,7 @@ class Manipulator:
             raise e
         
 
-        
+    # Just for maintaining internal record of collection targets
     def update_garbage_grasp(self, sim_collected: bool):
         try:
             logger.info(f"Manipulator -> update_garbage_grasp(): STARTS")

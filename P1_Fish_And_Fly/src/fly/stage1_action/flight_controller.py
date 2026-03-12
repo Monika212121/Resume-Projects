@@ -3,8 +3,7 @@ import time
 from src.common.logging import logger
 
 from src.fish.stage3_action.entity import Waypoint
-
-from src.fly.stage2_action.entity import FlightControllerConfig, FlightMode
+from src.fly.stage1_action.entity import FlightControllerConfig, FlightMode
 
 
 

@@ -69,6 +69,9 @@ class CameraToFishFrameProjector:
                 class_id = tracked_obj.class_id,
                 class_name = tracked_obj.class_name,
                 age = tracked_obj.age,
+                state = tracked_obj.state,
+                avg_confidence = tracked_obj.avg_confidence,
+                entity_role = tracked_obj.entity_role,
                 relative_position = Waypoint(x_rel_fish, y_rel_fish, z_rel_fish),
                 relative_distance = relative_distance,
                 original_bbox = tracked_obj.bbox
