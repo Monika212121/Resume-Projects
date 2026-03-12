@@ -32,7 +32,7 @@ class VisualizationAdapter:
 
 
 
-    def build(self, active_objects: List[TrackedGarbage], selected_track_id: int) -> VisualizationEntity:
+    def build(self, active_objects: List[TrackedGarbage], selected_track_id: Optional[int]) -> VisualizationEntity:
 
         visuals: List[VisualObject] = []
 

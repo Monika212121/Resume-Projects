@@ -13,7 +13,7 @@ WORKSPACE_BOUNDS = {
 }
 
 
-SIM_GARBAGE_SPAWN_OFFSET_X = 5.0  # meters, forward in Fish heading
+SIM_GARBAGE_SPAWN_OFFSET_X = 8.0  # meters, forward in Fish heading
 
 
 SLOW_TELEPORT_PHASES = {

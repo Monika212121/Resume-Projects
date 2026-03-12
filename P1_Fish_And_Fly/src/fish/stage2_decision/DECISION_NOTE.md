@@ -129,3 +129,28 @@ b.) With it:
 - Works in real water flow
 
 -----------------------------------------------------------------------------------------------------------------------------------------------
+
+## 3. Categorizing collection targets in 3 categories
+
+1.) Selected
+2.) Ignored
+3.) Avoided
+
+- While calculating priority score, I penalized targets with hazards near them, multiplying by -1.
+
+- If `FishFrameObject.priority_score < 0` => hazard is near, It means target must be avoided.
+
+- If `FishFrameObject.priority_score > 0` => safe object, It means I can select it.
+
+
+## 4. Selection Lock Resulting behaviour 
+
+Test cases
+```
+| Case        | Situation                       | Commands emitted                |
+| ----------- | ------------------------------- | ----------------                |
+|  1          | target disappears               | LOST                            |
+|  2          | target continues                | SELECT                          |
+|  3          | target disappears + new appears | LOST + SELECT                   |
+|  4          | new system start                | SELECT                          |
+```

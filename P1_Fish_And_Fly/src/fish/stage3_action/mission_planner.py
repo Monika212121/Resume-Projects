@@ -1,21 +1,22 @@
 import time
-from typing import Optional, Dict, Any, Tuple, List
+from typing import Optional, Dict, Any, List
 
 from src.common.logging import logger
 from src.common.utils.mission import is_reached_target
 from src.common.projection.entity import FishFrameObject
+from src.common.entity.fish_machine_info import FishNavigationInfo
 from src.common.alerts_and_notifications.notifier import AlertNotifier
 from src.common.alerts_and_notifications.alert_types import AlertType, ErrorType
 from src.common.alerts_and_notifications.notification_types import NotificationType
 
-from src.fish.stage2_decision.entity import ActionIntent
+from src.fish.stage2_decision.entity import ActionIntent, CategorizedObjects
 from src.fish.stage3_action.bin_manager import BinManager
 from src.fish.stage3_action.manipulator import Manipulator
 from src.fish.stage3_action.navigation import PathNavigator
-from src.fish.stage5_simulation.sim_bridge import SimulationBridge
-from src.fish.stage5_simulation.entity import SimulationVisualization
 from src.fish.stage3_action.unload_behavior import UnloadGarbageBehavior
-from src.fish.stage3_action.entity import Mission, Bin, Navigation, CostModel, DumpLocation, MissionPhase, Depths, MissionCheckpoint, ActionStatus, ActionFeedback, Waypoint
+from src.fish.stage3_action.entity import ActionConfig, MissionPhase, Depths, MissionCheckpoint, ActionStatus, ActionFeedback, Waypoint
+from src.fish.stage4_simulation.entity import SimulationConfig
+from src.fish.stage4_simulation.sim_bridge import SimulationBridge
 
 
 
@@ -30,24 +31,26 @@ class MissionPlanner:
         - Resume after action feedback
 
     """
-    def __init__(self, mission_cfg: Mission, bin_cfg: Bin, navigation_cfg: Navigation, cost_model_cfg: CostModel, dump_location_cfg: DumpLocation, sim_visualization_cfg: SimulationVisualization):
-        self.mission_cfg = mission_cfg
+    def __init__(self, action_config: ActionConfig, simulation_config: SimulationConfig):
+        self.mission_cfg = action_config.mission
+        self.cost_cfg = action_config.cost_model
+        self.dump_location_cfg = action_config.dump_location
 
         self.notifier = AlertNotifier()   
-        self.bin_manager = BinManager(bin_cfg)
-        self.navigator = PathNavigator(navigation_cfg= navigation_cfg)
+        self.bin_manager = BinManager(bin_cfg= self.mission_cfg.bin_manager)
+        self.navigator = PathNavigator(navigation_cfg= self.mission_cfg.navigation)
         self.manipulator = Manipulator()
         self.garbage_unloader = UnloadGarbageBehavior(
-            cost_cfg= cost_model_cfg, 
+            cost_cfg= self.cost_cfg, 
             notifier_obj= self.notifier, 
             navigator_obj= self.navigator, 
-            garbage_dump= dump_location_cfg,
+            garbage_dump= self.dump_location_cfg,
             depths = self.mission_cfg.depths
         )
-        self.sim_bridge = SimulationBridge(simulation_cfg = sim_visualization_cfg, garbage_dump = dump_location_cfg)                                                                # Connection to PyBullet Simulation
+        self.sim_bridge = SimulationBridge(simulation_cfg = simulation_config, garbage_dump = self.dump_location_cfg)                                                                # Connection to PyBullet Simulation
 
-        self.phase: MissionPhase = MissionPhase.SURFACE    
-        self.depths: Depths = mission_cfg.depths                                                            # Mission state initiated
+        self.phase: MissionPhase = MissionPhase.SURFACE
+        self.depths: Depths = self.mission_cfg.depths                                                            # Mission state initiated
         self.active_target: Optional[int] = None
         self.retry_count: int = 0
         self.max_retries: int = self.mission_cfg.limits.max_operation_retries
@@ -61,7 +64,8 @@ class MissionPlanner:
 
 
 
-    def tick(self, action_intent: Optional[ActionIntent], sel_fish_frame_object: Optional[FishFrameObject], fish_frame_objects: Dict[int, FishFrameObject]) -> ActionFeedback:
+
+    def tick(self, action_intent: Optional[ActionIntent], selected_target: Optional[FishFrameObject], categorized_objects: CategorizedObjects) -> ActionFeedback:
         """
         Gate of Action pipeline. 
 
@@ -85,19 +89,24 @@ class MissionPlanner:
         """        
         try:
             logger.info(f"MissionPlanner -> tick(): STARTS, action_intent: {action_intent}, mission phase: {self.phase}")
-            feedback : ActionFeedback         
+            feedback : ActionFeedback    
 
-            # A. Ensure simulation is started exactly once
-            self.sim_bridge.start()
+            # NOTE: Implementing `Perception-driven Digital twin simulation`
+            
+            # Start Simulation
+            self.sim_bridge.start()     
 
-            # B. Inject correct depth to fish_frame_objects and selected fish_frame object                  # refer ACTION_NOTES.md(10)
-            fish_frame_objects, sel_fish_frame_object = self.apply_depth_to_fish_frame_objects(fish_frame_objects, sel_fish_frame_object)    
+            # Retrieve Fish machine's current navigation information(will be used in spawning)
+            fish_nav_info = FishNavigationInfo(
+                position= self.navigator.current_position,
+                direction= self.navigator.curr_fish_direction
+            )
 
-            # C. SIMULATION: Spawn garbage objects in front of Fish machine, mirroring perception(VISION)
-            if len(fish_frame_objects) > 0:
-                self.sim_bridge.update_garbage_spawning(fish_frame_objects= fish_frame_objects, curr_fish_position= self.navigator.current_position, curr_fish_direction= self.navigator.curr_fish_direction)
+            # Spawn all objects in front of Fish machine 
+            if categorized_objects:
+                self.sim_bridge.update_all_objects_spawning(cat_objects= categorized_objects, fish_navigation_info = fish_nav_info)
         
-            # D. Coordinates Garbage collection, Navigation and Garbage unloading
+            # Coordinates Garbage collection, Navigation and Garbage unloading
 
             # 1. FREEZING CURRENT INFO: Saving the current mission data (for future use).
             self.freeze_mission_data = MissionCheckpoint(
@@ -120,7 +129,7 @@ class MissionPlanner:
 
                     feedback = ActionFeedback(
                         status= ActionStatus.FAILED,
-                        track_id= None,
+                        track_id= action_intent.track_id if action_intent else -1,                                       # track_id = -1 means there is no target object
                         reason= "Unloading of bin is failed"
                     ) 
                     return feedback
@@ -137,24 +146,26 @@ class MissionPlanner:
                 self.phase = self.freeze_mission_data.last_phase
 
 
-            # NOTE: If action_intent = None, then world_object = None.
+            # NOTE: If action_intent = None, then selected_object = None.
 
             # 3. Handles GARBAGE COLLECTION and NAVIGATION together.
            
-            # Case1: If the target is identified(action_intent = valid) and is within reach, then collect it.
-            if action_intent and action_intent.track_id and sel_fish_frame_object and self.navigator.target_is_near(sel_fish_frame_object):
-                logger.info(f"MissionPlanner -> tick(): Garbage is near, we have to handle target at location: {action_intent.bbox}")
+            # Case1: If the target is identified(action_intent = valid), and is withing collection range, then collect it.
+            if action_intent and action_intent.track_id and selected_target and self.sim_bridge.is_target_within_collection_range(track_id= action_intent.track_id):
+                logger.info(f"MissionPlanner -> tick(): Target identified at relative position: {selected_target.relative_position}")
                 feedback = self._handle_target(garbage_track_id = action_intent.track_id)                                               # SUCCESS/FAILED
 
             # Case2: If the target is not identified / If there is no object in frame (action_intent = None)
             # Case3: If the given target is not within reach (action_intent = valid and target_is_near() = False), 
             # If both above cases, then move 1 step forward.
             else: 
-                target_id = action_intent.track_id if action_intent else None                           
-                next_robot_position = self.navigator.get_next_position()
+                target_id = action_intent.track_id if action_intent else -1                                                             # refer ACTION_NOTES.md(11)  
+
+                # NOTE: If target_id == -1, then it means no valid target is present, else it means the target is too far                         
+                next_robot_position = self.navigator.get_next_position_in_path()
 
                 # SIMULATION for moving 1 step forward
-                moved_in_sim = self.simulate_step_forward(target_position= next_robot_position, fish_frame_objects= fish_frame_objects)
+                moved_in_sim = self.simulate_step_forward(target_position= next_robot_position)
                 if moved_in_sim:
                     feedback = ActionFeedback(
                         status= ActionStatus.MOVED_FORWARD,
@@ -192,57 +203,6 @@ class MissionPlanner:
 
 
 
-    def apply_depth_to_fish_frame_objects(self, fish_frame_objects: Dict[int, FishFrameObject], sel_fish_frame_object: Optional[FishFrameObject]) -> Tuple[Dict[int, FishFrameObject], Optional[FishFrameObject]]:
-        """
-        Projects perception objects into mission depth.
-
-        Perception provides (x, y); mission phase provides z.
-        
-        :param self: Belongs to the MissionPlanner class
-        :param world_objects: Transformed active objects with world frame cooridnates
-        :type world_objects: Dict[int, WorldObject]
-        :param sel_world_object: Selected transformed object
-        :type sel_world_object: Optional[WorldObject]
-        :return: World objects and selected world object with current fish machine's depth
-        :rtype: Tuple[Dict[int, WorldObject], WorldObject | None]
-        """
-        try:
-            logger.info(f"MissionPlanner -> apply_depth_to_world_objects(): STARTS, before world_objects: {fish_frame_objects}")
-            curr_depth : float = 0.0
-
-            # If world object is present, then selected world object must be present
-            if len(fish_frame_objects) == 0:
-                logger.info(f"MissionPlanner -> apply_depth_to_world_objects(): There is no world objects")
-                return (fish_frame_objects, sel_fish_frame_object)                                                    # No projection needed
-
-            # Determining the current depth of the Fish machine
-            if self.phase == MissionPhase.SURFACE:
-                curr_depth = self.depths.surface
-            elif self.phase == MissionPhase.UNDERWATER:
-                curr_depth = self.depths.underwater
-            else:
-                return (fish_frame_objects, sel_fish_frame_object)                                                    # No projection needed
-            
-            logger.info(f"MissionPlanner -> apply_depth_to_world_objects(): current depth: {curr_depth}")
-            
-            # Updating the depth of world objects and selected world object
-            for obj in fish_frame_objects.values():
-                obj.relative_position.z = curr_depth
-
-                if sel_fish_frame_object and obj.track_id == sel_fish_frame_object.track_id:
-                    sel_fish_frame_object.relative_position.z = curr_depth
-
-
-            logger.info(f"MissionPlanner -> apply_depth_to_world_objects(): ENDS, after world_objects: {fish_frame_objects}")
-            return (fish_frame_objects, sel_fish_frame_object)
-
-
-        except Exception as e:
-            logger.info(f"Error occurred in MissionPlanner -> apply_depth_to_world_objects(), error: {e}")
-            raise e
-        
-
-
     def execute_navigation_to(self, destination: Waypoint, return_back: bool = False) -> bool:
         try:
             logger.info(f"MissionPlanner -> execute_navigation_to(): STARTS, destination: {destination}, returning: {return_back}")
@@ -273,7 +233,7 @@ class MissionPlanner:
                     path_waypoints.append(curr_surface_pos)
 
 
-                # Now the fish machine is currently in surface, so directly traverse to the HQ.
+                # Now the fish machine is currently in surface, so directly traverse to the destination.
                 next_robot_pos = self.navigator.get_linear_step_to_destination(destination= destination)
                 reached = self.simulate_step_forward(target_position= next_robot_pos)
                 if not reached:
@@ -366,19 +326,16 @@ class MissionPlanner:
         try:
             logger.info(f"MissionPlanner -> handle_target(): STARTS")
 
-            # 1. Pause navigation
+            # Pause navigation
             self.navigator.pause()
 
-            # 2. Recognize the current target garbage
-            self.active_target = garbage_track_id
-
-            # 3. Execute garbage collection in Simulation
+            # Execute target collection in simulation world 
             sim_collected = self.sim_bridge.try_collect_garbage(target_track_id= garbage_track_id)
 
-            # 4. Update garbage's grasp status and creates feedback
+            # Update garbage's grasp status and creates feedback
             feedback = self.manipulator.resolve_garbage_collection(garbage_track_id= garbage_track_id, sim_collected= sim_collected)
 
-            # 5. Update the garbage bin load, based on the garbage collection status
+            # Update the garbage bin load, based on the garbage collection status
             if feedback.status == ActionStatus.COLLECTED or self._handle_failure(garbage_track_id= garbage_track_id):
 
                 # Update the feedback status to SUCCESS, if handle_failure() succeeds.
@@ -389,11 +346,10 @@ class MissionPlanner:
                 # Update the bin's load by 1 collected garbage.
                 self.bin_manager.add_garbage()
 
-            # 6. Reset the active target, regardless of current target's feedback
-            self.active_target = None
+            # Reset the active target, regardless of current target's feedback
             self.retry_count = 0
 
-            # 7. Resume navigation
+            # Resume navigation
             self.navigator.resume()
 
             logger.info(f"MissionPlanner -> handle_target(): ENDS")
@@ -402,7 +358,7 @@ class MissionPlanner:
 
         except Exception as e:
             logger.info(f"Error occurred in MissionPlanner -> handle_target(), error: {e}")
-            raise e 
+            raise e
 
 
 
@@ -442,7 +398,7 @@ class MissionPlanner:
 
 
 
-    def simulate_step_forward(self, target_position: Waypoint, fish_frame_objects: Dict[int, FishFrameObject] = {}) -> bool:
+    def simulate_step_forward(self, target_position: Waypoint) -> bool:
         """
         Apply a precomputed robot pose to the simulation.
 
@@ -468,25 +424,25 @@ class MissionPlanner:
             # Connecting PyBullet Simulation / real control
             # NOTE: Here, I am not passing target waypoint, I am passing the new target position (already calculated in step_forward())
             
-            # 2. Execute simulation step (teleport-based kinematic execution)
+            # Execute simulation step (teleport-based kinematic execution)
             self.sim_bridge.step(pose= target_position, curr_mission_phase= self.phase)
 
-            # 3. Read back pose from simulation (after stepping)
+            # Read back pose from simulation (after stepping)
             sim_curr_pose = self.sim_bridge.get_robot_pose()
             if sim_curr_pose is None:
-                logger.info(f"MissionPlanner -> simulate_step_forward(): SIMULATION ISSUE: Current position cannot be retrieved from Simulation")
+                logger.info(f"MissionPlanner -> simulate_step_forward(): SIMULATION ISSUE: Current Fish machine's position cannot be retrieved from Simulation")
                 return False
             
-            # 4. Retrieve the waypoint from Tuple[x,y,z,yaw]
+            # Retrieve the waypoint from Tuple[x,y,z,yaw]
             sim_current_position = Waypoint(sim_curr_pose[0], sim_curr_pose[1], sim_curr_pose[2])
 
-            # 5. Validate simulation result
+            # Validate simulation result
             if not is_reached_target(current_position= sim_current_position, target_position= target_position):
                 logger.error("MissionPlanner -> simulate_step_forward(): "f"Simulation mismatch | sim={sim_curr_pose}, target={target_position}")
                 logger.warning(f"SIM clamp applied: target_position: {target_position} → safe_position: {sim_curr_pose}")
                 return False
 
-            # 6. Commit Fish's pose back to Navigation (single source of truth)
+            # Commit Fish machine pose, from simulation world, back to Navigation (single source of truth)
             self.navigator.current_position = sim_current_position
             
             logger.info(f"MissionPlanner -> simulate_step_forward(): ENDS, after current position: {self.navigator.current_position}")
@@ -495,7 +451,7 @@ class MissionPlanner:
     
         except Exception as e:
             logger.info(f"Error occurred in MissionPlanner -> simulate_step_forward(), error: {e}")
-            raise e  
+            raise e
 
 
 

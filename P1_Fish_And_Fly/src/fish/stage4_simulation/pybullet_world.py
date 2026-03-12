@@ -1,11 +1,13 @@
 import pybullet as p
 import pybullet_data
-from typing import List
+from typing import List, Tuple
 
 from src.common.logging import logger
 
 from src.fish.stage3_action.entity import Waypoint, DumpLocation
-from src.fish.stage5_simulation.constants import WORKSPACE_BOUNDS
+from src.fish.stage4_simulation.entity import SpawnObject
+from src.fish.stage4_simulation.constants import WORKSPACE_BOUNDS
+from src.fish.stage4_simulation.object_factory import create_body
 
 
 
@@ -50,6 +52,10 @@ class PyBulletWorld:
         p.configureDebugVisualizer(p.COV_ENABLE_RGB_BUFFER_PREVIEW, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, 0)
+
+
+        # Crate Head Quarter of the workspace
+        self.spawn_headquarter(position= (0.0, 20.10, 0.0))
 
         # Create dump points on the boundary of the workspace
         self.spawn_dump_points()
@@ -160,6 +166,51 @@ class PyBulletWorld:
         )
 
         return
+
+
+
+    def spawn_headquarter(self, position: Tuple[float,float,float]):
+
+        try: 
+            # base platform
+            base_info = SpawnObject(
+                name= "HQ",
+                shape= "cylinder",
+                size= (1.8, 0.6),
+                color= (1.0, 0.0, 0.0, 1.0),
+                count= 1
+            )
+            base_id = create_body(body_info= base_info, position= position, orientation = None)
+
+            # pole
+            pole_pos = (position[0], position[1], position[2] + 0.6)
+            pole_info = SpawnObject(
+                name= "HQ",
+                shape= "cylinder",
+                size= (0.15, 5.0),
+                color= (0.1, 0.5, 1.0, 1.0),
+                count= 2
+            )
+            pole_id = create_body(body_info= pole_info, position= pole_pos, orientation = None)
+
+            # top marker
+            marker_pos = (position[0], position[1], position[2] + 1.2)
+            marker_info = SpawnObject(
+                name= "HQ",
+                shape= "sphere",
+                size= (0.36,),
+                color= (1.0, 1.0, 1.0, 0.9),
+                count= 3
+            )
+            marker_id = create_body(body_info= marker_info, position= marker_pos, orientation = None)
+
+            self.hq_body_ids = [base_id, pole_id, marker_id]
+            return
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in spawn_headquarter(), error: {e}")
+            raise e
 
 
 

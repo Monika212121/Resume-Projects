@@ -3,11 +3,7 @@ from typing import List, Dict, Tuple, Set
 from src.common.logging import logger
 
 from src.fish.stage1_vision.entity import AggregationConfig, Detection, TrackedGarbage, TrackedState
-
-from src.fish.stage2_decision.entity import ActionIntent
-from src.fish.stage2_decision.command import LifeCycleCommand, LifeCycleAction
-
-from src.common.logging.result_logger import OutcomeLogger
+from src.fish.stage2_decision.entity import LifeCycleCommand, LifeCycleAction
 
 
 
@@ -22,12 +18,11 @@ class GarbageAggregator:
 
         self.frame_count: int = 0
         self.memory: Dict[int, TrackedGarbage] = {}                             # lifecycle memory
-        self.done_ids: Set[int] = set()                                         # list of ids of DONE/FAILED/LOST objects      
-        self.result_logger = OutcomeLogger()                                    # to log the LOST objects
+        self.done_ids: Set[int] = set()                                         # list of ids of DONE/FAILED/LOST objects
 
 
     
-    def create_garbage_aggregations(self, detections: List[Detection]) -> List[TrackedGarbage]:
+    def create_garbage_aggregations(self, detections: List[Detection]) -> Tuple[List[TrackedGarbage], List[TrackedGarbage]]:
         """
         Create garbage aggregations from raw object detections, received from YOLO.
 
@@ -66,7 +61,8 @@ class GarbageAggregator:
                     bbox = det_bbox,
                     age = 1,
                     last_seen_frame = self.frame_count,
-                    state = TrackedState.NEW
+                    state = TrackedState.NEW,
+                    entity_role = det.entity_role
                 )
 
                 self.memory[track_id] = tracked_object
@@ -86,31 +82,22 @@ class GarbageAggregator:
         logger.info(f"create_garbage_aggregations(): , tracked_objects= {len(self.memory)}")
 
         # --------------------------------------Handle missing objects--------------------------------
+        lost_objects: List[TrackedGarbage] = []
+
         for track_id, tracked_object in list(self.memory.items()):
             if track_id in active_track_ids:
                continue
 
             # finding for how long the object is missing, using formula (current frame - last seen frame)
-            idle_frame = self.frame_count - tracked_object.last_seen_frame
+            object_idle_frame = self.frame_count - tracked_object.last_seen_frame
             
             # State transformation: [any state -> LOST]
-            if idle_frame > self.max_idle_frames:
-                # Vision can mark the state to LOST
+            if object_idle_frame > self.max_idle_frames:
+                # Mark the object's state to LOST
                 if tracked_object.state != TrackedState.DONE:                       # the object is not collected yet.
                     tracked_object.state = TrackedState.LOST
                     logger.info(f"marked lost: track_id: {track_id}")
-
-                    action_intent = ActionIntent(
-                        track_id= track_id,
-                        class_name= tracked_object.class_name,
-                        priority_score= 0,                                          # priority_score = 0 because we should not try to collect LOST objects
-                        bbox= tracked_object.bbox,
-                        reason= "The object is missing for a long time"
-                    )
-
-                    # Logging LOST garbage objects
-                    self.result_logger.log_action_results(action_intent, None)
-                
+                    lost_objects.append(tracked_object)
         
         # ----------------Cleanup of DONE and LOST objects-------
         #self._cleanup_memory()                 # Not required
@@ -118,7 +105,7 @@ class GarbageAggregator:
         # Taking only active objects from the memory.
         active_objects = [obj for obj in self.memory.values() if obj.state not in (TrackedState.DONE, TrackedState.LOST)]
 
-        logger.info(f"GarbageAggregator -> create_garbage_aggregations() -> active objects: {len(active_objects)}, total objects in agg: {len(self.memory)}")
+        logger.info(f"GarbageAggregator -> create_garbage_aggregations() -> active objects: {len(active_objects)}, lost objects: {len(lost_objects)}, total objects in agg: {len(self.memory)}")
 
         for obj in self.memory.values():
             logger.info(
@@ -129,7 +116,7 @@ class GarbageAggregator:
             )
 
         logger.info("GarbageAggregator -> create_garbage_aggregations(): ENDS")
-        return active_objects
+        return (active_objects, lost_objects)
 
 
     def apply_lifecycle_changes(self, command: LifeCycleCommand) -> bool:
@@ -144,8 +131,8 @@ class GarbageAggregator:
         """
         logger.info(f"GarbageAggregator -> apply_lifecycle_changes(): STARTS, command received: {command}")
 
-        if command.track_id is None:
-            logger.info(f"No valid command is received.")
+        if command.track_id == -1:                                                                                          # refer ACTION_NOTES.md()
+            logger.info(f"Command is generated for an invalid object.")
             return False
 
         target_track_id = command.track_id
@@ -155,7 +142,6 @@ class GarbageAggregator:
             logger.info(f"Locked object is not present in the aggregation memory.")
             return False
         
-
         # Retrieving the selected object from the aggregation memory.
         selected_object = self.memory[target_track_id]
 
@@ -165,7 +151,7 @@ class GarbageAggregator:
         if command.action == LifeCycleAction.SELECT:
             selected_object.state = TrackedState.SELECTED                           # automatically updated in aggregation memory(pass by reference)
 
-        elif command.action == LifeCycleAction.MARK_DONE:
+        elif command.action == LifeCycleAction.DONE:
             selected_object.state = TrackedState.DONE
 
             # Updating done_ids list.

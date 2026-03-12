@@ -177,7 +177,7 @@ class PathNavigator:
     
 
 
-    def get_next_position(self) -> Waypoint:
+    def get_next_position_in_path(self) -> Waypoint:
         """
         Navigation is the authoritative source of robot motion.
 
@@ -310,11 +310,21 @@ class PathNavigator:
 
             # Updating current direction of Fish machine
             logger.info(f"PathNavigator -> update_fish_direction(), fish_delta_x: {fish_delta_x}")
-            self.curr_fish_direction = 1 if fish_delta_x >= 0 else -1
+
+            # Determining direction of fish machine
+            if fish_delta_x > 0:
+                curr_dir = 1
+            elif fish_delta_x < 0:
+                curr_dir = -1
+            else:
+                curr_dir = 0
+
+            self.curr_fish_direction = curr_dir
 
             # NOTE:
-            # If dir =  1, then fish moving in [0   ->  100] direction and
-            # if dir = -1, then fish moving in [100 ->   0] direction
+            # If dir =  1, then fish moving in [0   ->  100] direction in x-axis and
+            # if dir = -1, then fish moving in [100 ->   0] direction in x-axis
+            # If dir =  0, then fish moving in y-axis
 
             # Updating fish machine's last position as the current position
             self.last_fish_position = self.current_position

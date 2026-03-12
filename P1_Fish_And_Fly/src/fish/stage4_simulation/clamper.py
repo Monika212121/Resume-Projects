@@ -2,7 +2,7 @@
 from src.common.logging import logger
 
 from src.fish.stage3_action.entity import Waypoint
-from src.fish.stage5_simulation.constants import WORKSPACE_BOUNDS
+from src.fish.stage4_simulation.constants import WORKSPACE_BOUNDS
 
 
 

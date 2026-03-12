@@ -1,7 +1,14 @@
 from enum import Enum
 from pathlib import Path
-from typing import List, Tuple, Optional
 from dataclasses import dataclass
+from typing import List, Tuple, Optional
+
+
+
+# Visualization object
+@dataclass
+class PerceptionVisualization:
+    enabled_gui: bool
 
 
 # IO configuration objects
@@ -80,15 +87,32 @@ class AggregationConfig:
 # -----------------------------
 # Main Vision Config
 # -----------------------------
+
+# This object displays Semantic behaviour category
+@dataclass
+class Categories:
+    collection_targets: List[str]
+    environmental_entities: List[str]
+    navigation_hazards: List[str]
+
+
 @dataclass
 class VisionConfig:
+    visualization: PerceptionVisualization
     io: IOConfig
     class_names: List[str]
     training: YOLOModelTrainerConfig
     inference: InferenceConfig
     tracking: TrackingConfig
     aggregation: AggregationConfig
+    categories: Categories
 
+
+# This is enum, maintaing semantic entity categorization
+class EntityRole(Enum):
+    COLLECTION_TARGET = "garbage object"                        # need to collect
+    ENVIRONMENT_ENTITY = "harmless aquatic plant or animal"     # need to ignore
+    NAVIGATION_HAZARD = "dangerous animal or large_obstacle"    # need to avoid
 
 
 # This object avoids passing raw YOLO tensors everywhere, used in Vision module only
@@ -98,8 +122,8 @@ class Detection:
     class_name: str
     confidence: float
     bbox: List[int]                                             # [x1, y1, x2, y2]
-    track_id: int | None = None
-
+    track_id: Optional[int] = None
+    entity_role: EntityRole = EntityRole.ENVIRONMENT_ENTITY
 
 # This is enum, maintaining lifecycle state of an object
 class TrackedState(Enum):
@@ -122,4 +146,4 @@ class TrackedGarbage:
     age: int                                                    # number of frames seen
     last_seen_frame: int
     state: TrackedState
-    fade_frames_remaining: int = 0                              # UI related
+    entity_role: EntityRole
