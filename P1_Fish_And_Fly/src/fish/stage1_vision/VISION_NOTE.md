@@ -118,3 +118,13 @@ If model is missing → auto-train → continue pipeline.
 
 - In the `model_result/FishV1` folder, all files inside are produced from the YOLO model training.
 - The files show training result, curve, logs of 100 epochs, detection on validation dataset, etc.
+
+
+## 5. Folder video
+
+- Earlier I was using `video` mode for project inference. But now I changed the mode to `folder_video`.
+- In this I created a `folder_video.py` file inside IO Abstraction. 
+- This makes the project inference take videos sequentally from the `test_footage_split` folder. So, as the project starts first video inside the folder plays, as this video is completed(after 10s), next video in the folder will start again for our video feed.
+- This looks the inference smooth and avoid manually selecting the video footage one by one.
+- We can keep the videos in our sequence by numbering and hence inference will happen accordingly.
+- I also used mode transition, whenver mission phase = SURFACE, the videos inside `dataset/test_footage_split/surface` will run and when the mission phase changes to UNDERWATER, the videos inside `dataset/test_footage_split/underwater` folder will run.

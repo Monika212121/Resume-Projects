@@ -33,7 +33,7 @@ mission:
     reach_threshold: 5
     speeds:  
       surface: 1.2
-      underwater: 0.6
+      underwater: 1.2
 
   limits:
     max_operation_retries: 3

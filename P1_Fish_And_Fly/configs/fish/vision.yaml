@@ -2,15 +2,15 @@
 # Models used: YOLOv8s
 
 visualization:
-  enabled_gui: false
+  enabled_gui: true
 
 
 io:
-  source: video                                       # camera | video | sim
+  source: folder_video                                       # camera | video | sim | folder_video          # refer VISION_NOTES.md(5)
   camera: 
     device_id: 0
   video:
-    path: dataset/test_footage/demo8.mp4
+    path: dataset/test_footage_split                                                                        # refer dataset/NOTE.md(4)
 
 
 class_names:
@@ -62,8 +62,8 @@ tracking:
 
 aggregation:
   max_history: 15
-  stable_age: 5                                       # no. of frames an object is seen
-  max_idle_frames: 30                                 # no. of frames an object is not seen
+  stable_age: 5                                                 # Number of frames, an object must appear to be considered stable
+  max_idle_frames: 30                                           # Nuber of frames, an object is not seen
 
 
 # Semantic categories
