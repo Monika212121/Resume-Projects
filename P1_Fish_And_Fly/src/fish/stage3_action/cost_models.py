@@ -39,11 +39,11 @@ class CostCalculator:
 
     def calculate_docking_cost(self, target_pos: Waypoint, current_pos: Waypoint, env: MockEnvironmentModel) -> float:
         try:
-            logger.info(f"CostCalculator -> calculate_docking_cost(): STARTS, calculating for d_point: {target_pos}")
+            #logger.info(f"CostCalculator -> calculate_docking_cost(): STARTS, calculating for d_point: {target_pos}")
       
             # distance and time
             distance = self.planar_distance(current_pos, target_pos)
-            travel_time = distance / self.vehicle.cruise_speed
+            #travel_time = distance / self.vehicle.cruise_speed
 
             # current opposition
             current_cost = env.current_opposition(current_pos, target_pos)
@@ -74,7 +74,7 @@ class CostCalculator:
                 self.weights.uncertainty * uncertainty_n
             )
 
-            logger.info(f"CostCalculator -> calculate_docking_cost(): ENDS, cost: {total_cost}")
+            #logger.info(f"CostCalculator -> calculate_docking_cost(): ENDS, cost: {total_cost}")
             return total_cost
 
 

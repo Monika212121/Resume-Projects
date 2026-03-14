@@ -36,6 +36,22 @@ A(surface) ───────▶  H (HQ)
 
 # Unloading Garbage bin
 
+Top view of the worksapce and dump-points
+
+```
+
+  (117,117)      ●       ●      (3,117)
+        ┌────────────────────────┐
+        │                        │
+        │                        │
+   ●    │                        │    ●
+        │                        │
+        │                        │
+        └────────────────────────┘
+  (3,3)        ●        ●      (117,3)
+
+```
+
 - I am using Cost based deterministic minimization function to locate the nearest D-point(dump/docking point).
 - Correct cost decomposition (industry-grade)
 - Let’s rewrite your cost in a robot-usable way:
@@ -151,6 +167,12 @@ Or even: ```uncertainty = distance_since_last_fix```
 ✔ used in long-range AUVs
 
 
+
+## Garbage grasping lifecycle:
+
+- Planner orchestrates.
+- Simulation validates physics.
+- Manipulator resolves interaction semantics.
 
 
 ## Goal of the Environment Abstraction
@@ -279,3 +301,10 @@ This ensures:
 - Clean separation between perception space, world frame, and mission space.
 
 Depth is treated as a mission-level attribute, not a perception property.
+
+
+11.) If there is no target present in the current tick, 
+
+- Then action_intent = None and I take target_track_id = (-1)
+
+- This is to avoid returning a feedback with track_id = None. A feedback, in any test case, must be valid.

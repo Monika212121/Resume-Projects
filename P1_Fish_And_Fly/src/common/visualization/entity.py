@@ -4,11 +4,6 @@ from typing import List, Optional, Tuple
 
 
 @dataclass
-class PerceptionVisualization:
-    enabled_gui: bool
-
-
-@dataclass
 class VisualObject:
     id: int
     bbox: Tuple[int, int, int, int]

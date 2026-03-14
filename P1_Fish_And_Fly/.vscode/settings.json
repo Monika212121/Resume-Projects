@@ -1,3 +1,13 @@
 {
-    "python.analysis.extraPaths": ["./src"]
+    "python.analysis.extraPaths": ["./src"],
+    "python.analysis.exclude": [
+        "**/.ffenv",
+        "**/build",
+        "**/dist",
+        "**/.git",
+        "**/node_modules"
+    ],
+    "python.analysis.indexing": true,
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "basic"
 }

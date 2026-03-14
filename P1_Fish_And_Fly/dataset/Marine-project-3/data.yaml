@@ -1,0 +1,25 @@
+names:
+- algae_bloom
+- big_rock
+- crab
+- dangerous_animal
+- fish
+- fishing_net
+- fishing_rope
+- glass_bottle
+- human
+- jellyfish
+- metal_can
+- plastic_bag
+- plastic_bottle
+- starfish
+- turtle
+nc: 15
+roboflow:
+  license: CC BY 4.0
+  project: marine-project-uoi6r
+  url: https://universe.roboflow.com/1conviniencestore/marine-project-uoi6r/dataset/3
+  version: 3
+  workspace: 1conviniencestore
+train: train/images
+val: valid/images

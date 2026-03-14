@@ -1,10 +1,12 @@
 # NOTE: This is pure decision memory, not vision memory.
+
 from typing import Optional, List, Tuple
 
 from src.common.logging import logger
+from src.common.projection.entity import FishFrameObject
 
-from src.fish.stage1_vision.entity import TrackedGarbage
-from src.fish.stage2_decision.command import LifeCycleCommand, LifeCycleAction
+from src.fish.stage2_decision.entity import LifeCycleCommand, LifeCycleAction
+
 from src.fish.stage3_action.entity import ActionFeedback, ActionStatus
 
 
@@ -17,71 +19,94 @@ class SelectionLock:
     def __init__(self):
         self.active_track_id : Optional[int] = None
         self.selection_counter = 1
+        self.last_priority_score = 0.0
 
 
-    def select_target(self, ranked_objects: List[Tuple[Optional[TrackedGarbage], float]]) -> Optional[LifeCycleCommand]:
+
+    def select_target(self, safe_target_objects: List[FishFrameObject]) -> Tuple[List[LifeCycleCommand], Optional[FishFrameObject]]:
         """
-        Selects highest priority object if no active lock exists.
-        
-        :param self: Belongs to the SelectionLock class.
-        :param ranked_objects: List of tracked objects, sorted w.r.t priority score.
-        :return: Command to make Lifecycle state transitions (state -> SELECTED) in Vision Aggregator.
-        :rtype: LifeCycleCommand | None
+        Responsible for target locking and lifecycle management.
+
+        Emits lifecycle commands:
+        - SELECT  : target is selected or re-selected
+        - LOST    : previously locked target disappeared
         """
-        logger.info(f"SelectionLock -> select_target(): STARTS, ranked objects: {len(ranked_objects)}")
-        
-        # 1. If there is no tracked stable objects in frame.
-        if len(ranked_objects) == 0:
-            logger.info("No stable candidates present now")
-            return None
+        try:
+            logger.info(f"SelectionLock -> select_target(): STARTS, ranked objects: {safe_target_objects}, active_track_id: {self.active_track_id}")
 
-        # 2. Selecting highest priority object.
-        selected_object, _ = ranked_objects[0]
-        if selected_object is None:
-            return None
-        
-        # 3. Creating the selection command, locking the suitable target
+            selection_commands: List[LifeCycleCommand] = []
 
-        # Case1: OLD TARGET: If a target is already locked
-        if self.active_track_id:
+            if len(safe_target_objects) == 0:
+                logger.info("No safe ranked objects are present")
+                return selection_commands, None
 
-            # CaseA: If the locked target is still present in current frame, then reselect it again 
-            if self.active_track_id == selected_object.track_id:
-                self.selection_counter += 1                                                                 # give another chance for its collection                                                  
-                command = LifeCycleCommand(                                     
+            # Selecting highest priority safe object
+            highest_priority_target = safe_target_objects[0]
+
+            # Creating the selection commands, releasing lost target(if any) and locking suitable target
+
+            # Case1: OLD TARGET: If a target is already locked
+            if self.active_track_id:
+
+                # CaseA: If the locked target is still present in current frame, then reselect it again 
+                if self.active_track_id == highest_priority_target.track_id:                                # Locked target still highest priority
+                    self.selection_counter += 1                                                             # give another chance for its collection                                                  
+                    selection_command = LifeCycleCommand(                                     
+                        action = LifeCycleAction.SELECT,
+                        track_id = self.active_track_id,
+                        selection_count = self.selection_counter,
+                        priority_score = highest_priority_target.priority_score
+                    )
+                    selection_commands.append(selection_command)
+
+                # CaseB: If the locked target is not present, in current frame anymore, then mark it as LOST and release it
+                else:
+                    lost_command = LifeCycleCommand(                                     
+                        action = LifeCycleAction.LOST,
+                        track_id = self.active_track_id,
+                        selection_count = self.selection_counter,
+                        priority_score = self.last_priority_score
+                    )
+                    selection_commands.append(lost_command)
+
+                    # Release the previously locked target, in LOST case
+                    self.release_target()
+
+                    # Lock new target
+                    self.active_track_id = highest_priority_target.track_id
+                    selection_command = LifeCycleCommand(                                     
+                        action = LifeCycleAction.SELECT,
+                        track_id = self.active_track_id,
+                        selection_count = self.selection_counter,                                           # already reset to 1 during release of last target 
+                        priority_score = highest_priority_target.priority_score
+                    )
+                    selection_commands.append(selection_command)
+
+
+            # Case2: NEW TARGET: If no target is locked at present
+            else:
+                # Locking the highest priority object as target
+                self.active_track_id = highest_priority_target.track_id
+                selection_command = LifeCycleCommand(                                     
                     action = LifeCycleAction.SELECT,
                     track_id = self.active_track_id,
-                    selection_count= self.selection_counter
+                    selection_count = self.selection_counter,                                                # already reset to 1 during release of last target
+                    priority_score = highest_priority_target.priority_score
                 )
-
-            # CaseB: If the locked target is not present, in current frame anymore, then mark it as LOST and release it
-            else:
-                command = LifeCycleCommand(                                     
-                    action = LifeCycleAction.LOST,
-                    track_id = self.active_track_id,
-                    selection_count= self.selection_counter
-                )
-
-                # Release the locked target, as it is LOST
-                self.active_track_id = None
+                selection_commands.append(selection_command)
+                
+                self.last_priority_score = highest_priority_target.priority_score                           # maintaining last priority_score for logging LOST object
 
 
-        # Case2: NEW TARGET: If no target is locked at present
-        else:
-            # Locking the highest priority object as target
-            self.active_track_id = selected_object.track_id
-            self.selection_counter = 1
+            logger.info(f"SelectionLock -> select_target(): ENDS, SELECTION COMMANDS: {selection_commands}, selected_obj: {highest_priority_target}")
+            return selection_commands, highest_priority_target
 
-            # New command generation.
-            command = LifeCycleCommand(                                     
-                action = LifeCycleAction.SELECT,
-                track_id = self.active_track_id,
-                selection_count= self.selection_counter
-            )
 
-        logger.info(f"SelectionLock -> select_target(): ENDS, SELECT COMMAND: {command}")
-        return command
-    
+        except Exception as e:
+            logger.info(f"Error occurred in SelectionLock -> select_target(), error: {e}")
+            raise e
+
+
 
     def release_target(self) -> None:
         """
@@ -89,25 +114,27 @@ class SelectionLock:
         
         :param self: Belongs to the SelectionLock class.
         """
-        logger.info(f"SelectorLock -> release(): STARTS, before releasing track_id = {self.active_track_id}")
+        try:
+            logger.info(f"SelectionLock -> release_target(): STARTS, before releasing track_id = {self.active_track_id}")
 
-        self.active_track_id = None                                                                         # triggered only when action_feedback status = SUCCESS / FAILED
+            # NOTE: Release will be triggered, when action_feedback
+            # status = SUCCESS / FAILED / LOST, not when status = SELECT / UNATTEMPTED
+            self.active_track_id = None
 
-        logger.info(f"SelectorLock -> release(): ENDS, after releasing track_id = {self.active_track_id}")
-        return
+            # Reset selection counter  
+            self.selection_counter = 1                
 
-
-    def get_locked_target(self) -> Optional[int]:
-        """
-        Provides the locked object's id.
-        
-        :param self: Belongs to the SelectionLock class.
-        """
-        return self.active_track_id
+            logger.info(f"SelectionLock -> release_target(): ENDS, after releasing track_id = {self.active_track_id}")
+            return
 
 
+        except Exception as e:
+            logger.info(f"Error occurred in SelectionLock -> release_target(), error: {e}")
+            raise e     
 
-    def handle_action_feedback(self, feedback: ActionFeedback) -> Optional[LifeCycleCommand]:
+
+
+    def handle_action_feedback(self, feedback: ActionFeedback) -> LifeCycleCommand:
         """
         Converts Action feedback into Lifecycle command.
 
@@ -121,46 +148,48 @@ class SelectionLock:
         :return: Life cycle command for the Vision module (status = MARK_DONE / FAILED / UNATTEMPTED)
         :rtype: LifeCycleCommand | None
         """
-        logger.info(f"handle_action_feedback(): STARTS, feedback status: {feedback.status}")
+        try: 
+            logger.info(f"SelectionLock -> handle_action_feedback(): STARTS, feedback status: {feedback.status}")
+          
+            # Creating Lifcycle command for the locked object, to pass back to Vision aggregation.
 
-        locked_target_id = self.active_track_id
-
-        # If selector locked_id and feedback track_id is mismatched.
-        if locked_target_id != feedback.track_id:
-            logger.info(f"Received object is not locked. locked object id: {locked_target_id}, feedback object id: {feedback.track_id}")
-            return None
-        
-        # Creating Lifcycle command for the locked object to pass to Vision aggregation.
-
-        # Case1: TARGET ATTEMPTED: When locked object is collected (SUCCESS).
-        if feedback.status == ActionStatus.COLLECTED:
-            command = LifeCycleCommand(
-                action = LifeCycleAction.MARK_DONE,
-                track_id = feedback.track_id,
-                selection_count= self.selection_counter
-            )
-        
-        # Case2: TARGET ATTEMPTED: When locked object is not collected (FAILED).
-        elif feedback.status == ActionStatus.FAILED:
-            command = LifeCycleCommand(
-                action = LifeCycleAction.FAILED,
-                track_id = feedback.track_id,
-                selection_count= self.selection_counter
-            )
-        
-        # Case3: TARGET UNATTEMPTED: When objects are tracked at a far location (MOVED_FORWARD / NONE).           
-        else:
-            command = LifeCycleCommand(
-                action = LifeCycleAction.UNATTEMPTED,
-                track_id = feedback.track_id,
-                selection_count= self.selection_counter
-            )
-            logger.info(f"The locked target is far from Fish machine and hence UNATTEMPTED.")
+            # Case1: TARGET ATTEMPTED: When locked object is collected (SUCCESS).
+            if feedback.status == ActionStatus.COLLECTED:
+                feedback_command = LifeCycleCommand(
+                    action = LifeCycleAction.DONE,
+                    track_id = feedback.track_id,
+                    selection_count= self.selection_counter,
+                    priority_score = 0.0                                                                    # After action is taken on a target, its priority_score becomes 0
+                )
+            
+            # Case2: TARGET ATTEMPTED: When locked object is not collected (FAILED).
+            elif feedback.status == ActionStatus.FAILED:
+                feedback_command = LifeCycleCommand(
+                    action = LifeCycleAction.FAILED,
+                    track_id = feedback.track_id,
+                    selection_count= self.selection_counter,
+                    priority_score = 0.0
+                )
+            
+            # Case3: TARGET UNATTEMPTED: When objects are tracked at a far location (MOVED_FORWARD / NONE).           
+            else:
+                feedback_command = LifeCycleCommand(
+                    action = LifeCycleAction.UNATTEMPTED,
+                    track_id = feedback.track_id,
+                    selection_count= self.selection_counter,
+                    priority_score = 0.0
+                )
+                logger.info(f"SelectionLock -> handle_action_feedback(), The locked target is far from Fish machine and hence UNATTEMPTED.")
 
 
-        # Releasing lock after command creation.
-        self.release_target()
+            # Releasing lock after command creation.
+            if feedback.status in [ActionStatus.COLLECTED, ActionStatus.FAILED]:
+                self.release_target()
 
-        logger.info(f"handle_action_feedback(): ENDS, command: {command}")
-        return command
-    
+            logger.info(f"SelectionLock -> handle_action_feedback(): ENDS, feedback command: {feedback_command}")
+            return feedback_command
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in SelectionLock -> handle_action_feedback(), error: {e}")
+            raise e

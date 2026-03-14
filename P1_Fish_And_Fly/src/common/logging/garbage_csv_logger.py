@@ -40,15 +40,13 @@ class GarbageCSVLogger:
                     "timestamp",
                     "track_id",
                     "class_name",
-                    "final_state",
-                    "priority_score",
-                    "first_seen_frame",
-                    "selected_at",
-                    "completed_at",
                     "age",
                     "avg_confidence",
-                    "failure_reason",
-                    "ignore_reason"
+                    "priority_score",
+                    "entity_role",
+                    "decision_status",
+                    "decision_reason",
+                    "final_action_status"
                 ])
 
 
@@ -65,15 +63,13 @@ class GarbageCSVLogger:
                     datetime.now(timezone.utc).isoformat(),
                     new_entry.track_id,
                     new_entry.class_name,
-                    new_entry.final_state,
-                    new_entry.priority_score,
-                    new_entry.first_seen_frame,
-                    new_entry.selected_at,
-                    new_entry.completed_at,
                     new_entry.age,
                     new_entry.avg_confidence,
-                    new_entry.failure_reason,
-                    new_entry.ignore_reason
+                    new_entry.priority_score,
+                    new_entry.entity_role,
+                    new_entry.decision_status,
+                    new_entry.decision_reason,
+                    new_entry.final_action_status
                 ])
 
             logger.info(f"GarbageCSVLogger -> log(), Recorded successfully: {new_entry.track_id}")   

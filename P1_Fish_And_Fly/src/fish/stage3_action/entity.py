@@ -1,8 +1,10 @@
 # Aim: This is action feedback from Action module to Decision module.
 
 from enum import Enum
-from typing import Optional, List
+from typing import List
 from dataclasses import dataclass
+
+
 
 class ActionStatus(Enum):
     ACTIVE = "active"                               # Only used in Simulation
@@ -11,13 +13,14 @@ class ActionStatus(Enum):
     MOVED_FORWARD = "moved"
     NONE = "nothing_happened"
     LOST = "object_lost"
-    IGNORED = "ignored_intentionally"
+    IGNORED = "ignored"
+    AVOIDED = "avoid"
 
 
 @dataclass
 class ActionFeedback:
     status: ActionStatus
-    track_id: Optional[int] = None
+    track_id: int
     reason: str = ""
 
 
@@ -119,3 +122,10 @@ class MissionCheckpoint:
     last_phase: MissionPhase         # tells phase/depth
     last_position: Waypoint
     last_timestamp: float
+
+
+@dataclass
+class ActionConfig:
+    mission: Mission
+    cost_model: CostModel
+    dump_location: DumpLocation

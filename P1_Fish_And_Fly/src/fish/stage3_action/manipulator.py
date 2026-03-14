@@ -1,29 +1,68 @@
-from typing import Optional, Tuple
+# Aim: update backend grasp state and produce semantic feedback
 
 from src.common.logging import logger
+
+from src.fish.stage3_action.entity import ActionFeedback, ActionStatus
 
 
 
 class Manipulator:
+    """
+    Given simulation result, update backend grasp state and produce semantic feedback
+    """
     def __init__(self):
-        pass
+        self.garbage_grasped: bool = False
 
 
-    def grasp_garbage(self, bbox: Optional[Tuple[int, int, int, int]]) -> bool:
+
+    def resolve_garbage_collection(self, garbage_track_id: int, sim_collected: bool) -> ActionFeedback:
         try:
-            logger.info(f"Manipulation -> grasp_garbage(): STARTS, position of garbage : {bbox}")
+            logger.info(f"Manipulator -> resolve_garbage_collection(): STARTS, track_id: {garbage_track_id}") 
 
-            if not bbox:
-                logger.info(f"Manipulation -> grasp_garbage(), No position is passed.")
-                return False
+            # 1. Update the garbage collection status, based on the result of real action/simulation(here)
+            self.update_garbage_grasp(sim_collected)
 
-            # TODO: Simulation stub
-            
-            logger.info(f"Manipulation -> grasp_garbage(): ENDS")
-            return True
+            # 2. Create action feedback, based on the simulation's result
+            # Case1: If the locked object is not collected
+            if not sim_collected:
+                feedback = ActionFeedback(
+                    status = ActionStatus.FAILED,
+                    track_id = garbage_track_id,
+                    reason = "Target grasp failed"
+                )
+            # Case2: If the locked object is collected successfully
+            else:
+                feedback = ActionFeedback(
+                    status = ActionStatus.COLLECTED,
+                    track_id = garbage_track_id,
+                    reason = "Target collected"
+                )
+                
+            logger.info(f"Manipulator -> resolve_garbage_collection(): ENDS, feedback: {feedback}")
+            return feedback
+        
+        
+        except Exception as e:
+            logger.error(f"Error occurred in Manipulator ->  resolve_garbage_collection(), error: {e}")
+            raise e
+        
+
+    # Just for maintaining internal record of collection targets
+    def update_garbage_grasp(self, sim_collected: bool):
+        try:
+            logger.info(f"Manipulator -> update_garbage_grasp(): STARTS")
+
+            # Updating garbage grasp status, based on the Simulation's result.
+            if sim_collected:
+                logger.info(f"Manipulator -> update_garbage_grasp(): Garbage is grasped")
+                self.garbage_grasped = True
+                return
+
+            logger.info(f"Manipulator -> update_garbage_grasp(): ENDS, Garbage is not grasped.")
+            return
 
 
         except Exception as e:
-            logger.info(f"Error occurred in Manipulation -> grasp_garbage(), error: {e}")
+            logger.info(f"Error occurred in Manipulator -> update_garbage_grasp(), error: {e}")
             raise e
 

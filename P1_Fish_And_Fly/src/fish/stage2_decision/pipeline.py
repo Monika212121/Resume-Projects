@@ -1,17 +1,19 @@
-from box import ConfigBox
-from typing import List, Optional, Tuple
+# Aim: This is entry point of the Decision Pipeline
+
+from typing import Dict
 
 from src.common.logging import logger
+from src.common.projection.entity import FishFrameObject
 
-from src.fish.stage1_vision.entity import TrackedGarbage
 
-from src.fish.stage2_decision.filter import StableObjectFilter
-from src.fish.stage2_decision.rules import RuleFilter
+from src.fish.stage2_decision.filter import Filter
 from src.fish.stage2_decision.reasoner import PriorityReasoner
 from src.fish.stage2_decision.planner import ActionPlanner
 from src.fish.stage2_decision.selector import SelectionLock
-from src.fish.stage2_decision.entity import ActionIntent
-from src.fish.stage2_decision.command import LifeCycleCommand
+from src.fish.stage2_decision.categorizer import Categorizer
+from src.fish.stage2_decision.entity import DecisionResult
+from src.fish.stage2_decision.entity import DecisionConfig, CategorizedObjects
+
 
 
 class DecisionPipeline:
@@ -23,54 +25,102 @@ class DecisionPipeline:
     - Selects and locks one object
     - Emits lifecycle command
     """
-
-    def __init__(self, decision_cfg: ConfigBox):
-        self.filter = StableObjectFilter()
-        self.rule_filter = RuleFilter(decision_cfg.rules)
-        self.reasoner = PriorityReasoner(decision_cfg.reasoner)
-        self.planner = ActionPlanner(decision_cfg.planner)
+    def __init__(self, decision_config: DecisionConfig):
+        self.filter = Filter(rules_filter_cfg = decision_config.rule_filter_cfg)
+        self.reasoner = PriorityReasoner(reasoner_config = decision_config.reasoner_cfg)
+        self.planner = ActionPlanner()
         self.selector = SelectionLock()
+        self.categorizer = Categorizer()
 
 
 
-    def run(self, active_tracked_agg_objects: List[TrackedGarbage]) -> Tuple[Optional[ActionIntent], Optional[LifeCycleCommand]]:
-        logger.info(f"DecisionPipeline -> run(): STARTS, active_objects: {len(active_tracked_agg_objects)}")
+    def run(self, fish_frame_objects: Dict[int, FishFrameObject]) -> DecisionResult:
+        try:
+            logger.info(f"DecisionPipeline -> run(): STARTS, fish_frame_objects: {fish_frame_objects}")
 
-        # If there is no active objects present, then no object can be selected.
-        if len(active_tracked_agg_objects) == 0:              
-            logger.info(f"DecisionPipeline-> run(): No tracked active objects are received from the Vision module")
-            return None, None
-
-        # Step1: Filtering out only STABLE objects.
-        stable_tracked_objects = self.filter.filter_detections(active_tracked_agg_objects)
-
-        # Step2: Applying Hard Gate / Rule-based Filtering
-        valid_objects = self.rule_filter.apply_hard_rules(stable_tracked_objects)
-        if not valid_objects:
-            logger.info(f"DecisionPipeline-> run(): No eligible objects")
-            return None, None
-
-        # Step3: Applying Soft Intelligence / Reasoning
-        # returns List[(TrackedGarbage, priority_score)]
-        ranked_objects = self.reasoner.calculate_priority_score(valid_objects)             
-        if not ranked_objects:
-            logger.info(f"DecisionPipeline-> run(): No priority-scored objects")
-            return None, None
-        
-        # Step4: Sorting the (tracked object, priority_score) dictionary w.r.t priority score in descending order
-        ranked_objects.sort(key = lambda x: x[1], reverse = True)                           
-        logger.info(
-            "DecisionPipeline -> Ranked objects: " + ", ".join(
-                f"(id={obj.track_id}, score={score:.2f})" for obj, score in ranked_objects if obj is not None
+            # Default decision result
+            categorized_objects = CategorizedObjects(
+                collection_targets= [],
+                environment_entities= [],
+                navigation_hazards= []
             )
-        )
 
-        # Step5: Selects and locks 1 target, generating a lifecycle command
-        select_command = self.selector.select_target(ranked_objects)
-        locked_id = self.selector.get_locked_target()
+            decision_result = DecisionResult(
+                categorized_objects= categorized_objects,
+                action_intent= None,
+                selection_commands= [],
+                selected_target= None
+            )
 
-        # Step6: Decision Making / Action Planning
-        action_intent = self.planner.build_action_intents(ranked_objects, locked_id)
+            if len(fish_frame_objects) == 0:              
+                logger.info(f"DecisionPipeline-> run(): No tracked active objects are received from the Vision module")
+                return decision_result
 
-        logger.info(f"DecisionPipeline -> run(): ENDS, action intent: {action_intent}, select_command: {select_command}")
-        return action_intent, select_command
+            # Stability filtering
+            stable_objects = self.filter.filter_by_stability_rules(fish_frame_objects)
+            if len(stable_objects) == 0:
+                logger.info(f"DecisionPipeline-> run(): No stable objects")
+                return decision_result
+
+            # Hard rules filtering
+            eligible_objects = self.filter.filter_by_hard_rules(stable_objects)
+            if len(eligible_objects) == 0:
+                logger.info(f"DecisionPipeline-> run(): No eligible objects")
+                return decision_result
+            
+            # NOTE: Assigning priority_score and decision status for environment and hazard objects during semantic categorization
+
+            # Semantic categorization
+            categorized_objects = self.categorizer.perform_semantic_categorization(eligible_objects= eligible_objects)
+            if len(categorized_objects.collection_targets) == 0:
+                logger.info(f"DecisionPipeline-> run(): No collection target objects")
+                decision_result.categorized_objects = categorized_objects               # updating result with categorized objects, rest of them is None
+                return decision_result 
+
+            # Hazard-aware Priority score calculation
+            ranked_target_objects = self.reasoner.calculate_priority_score(target_objects = categorized_objects.collection_targets, hazard_objects= categorized_objects.navigation_hazards)
+            if len(ranked_target_objects) == 0:
+                logger.info(f"DecisionPipeline-> run(): No priority-scored objects")
+                return decision_result
+            
+            # Sorting the scored target objects w.r.t priority score in descending order
+            ranked_target_objects.sort(key = lambda x: x.priority_score, reverse = True)                           
+            logger.info("DecisionPipeline -> run(): Ranked objects: " + ", ".join(f"(id={obj.track_id}, score={obj.priority_score:.2f})" for obj in ranked_target_objects))
+
+            # Hazard safety filtering 
+            safe_target_objects, unsafe_target_objects = self.categorizer.perform_target_categorization(ranked_target_objects = ranked_target_objects)
+
+            # Target selection, selects and locks 1 target
+            selection_commands, selected_target = self.selector.select_target(safe_target_objects= safe_target_objects)       # refer DECISION_NOTES.md(4)
+            if len(selection_commands) == 0 or selected_target is None:
+                logger.info(f"DecisionPipeline-> run(): No selection command is generated and No selected object")
+                return decision_result
+            
+            # Action planning
+            action_intent = self.planner.build_action_intent(safe_ranked_objects = safe_target_objects, locked_target_id = selected_target.track_id)
+
+            # Assigning Decision Status and priority_score to collection targets only 
+            updated_collection_targets = self.categorizer.assign_decision_status_for_target_objects(
+                all_target_objects = categorized_objects.collection_targets, 
+                safe_targets = safe_target_objects,
+                unsafe_targets = unsafe_target_objects, 
+                selected_track_id = selected_target.track_id
+            )
+
+            # Updating categorized objects with the updated collection targets
+            categorized_objects.collection_targets = updated_collection_targets
+
+            decision_result = DecisionResult(
+                categorized_objects= categorized_objects,
+                action_intent= action_intent,
+                selection_commands= selection_commands,
+                selected_target= selected_target
+            )
+
+            logger.info(f"DecisionPipeline -> run(): ENDS, decision_result: {decision_result}")
+            return decision_result
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in DecisionPipeline -> run(), error: {e}")
+            raise e
