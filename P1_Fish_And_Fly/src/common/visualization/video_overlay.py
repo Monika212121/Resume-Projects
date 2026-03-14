@@ -36,7 +36,7 @@ class GarbageVideoOverlay:
             frame = self._draw_selected(frame, viz_entity)
 
         # 3. Draw grasp threshold line (BLUE)
-        frame = self._draw_grasp_threshold(frame = frame, threshold_distance = self.threshold_distance)
+        #frame = self._draw_grasp_threshold(frame = frame, threshold_distance = self.threshold_distance)
 
         # 4. Draw coords(rel_x, rel_y) w.r.t fish machine (YELLOW)
         if selected_object and resized_bbox:

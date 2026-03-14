@@ -24,6 +24,7 @@ class SimulationBridge:
         self.object_manager = ObjectManager(visual_config = self.spawn_visual_config)
 
         self.simulation_started = False
+        self.grasp_threshold: float = 5.0
 
 
 
@@ -164,7 +165,7 @@ class SimulationBridge:
 
 
 
-    def is_target_within_collection_range(self, track_id: int, threshold: float = 1.0) -> bool:
+    def is_target_within_collection_range(self, track_id: int) -> bool:
         try:
             logger.info(f"SimulationBridge -> is_target_within_collection_range(): STARTS, track_id:{ track_id}")
             
@@ -187,7 +188,7 @@ class SimulationBridge:
             target_distance = get_target_distance(current_position= fish_robot_world_position, target_position= target_world_position)
 
             # Check if the given target is in grasp range of Fish robot or not
-            target_in_range = target_distance < threshold
+            target_in_range = target_distance < self.grasp_threshold
 
             logger.info(f"SimulationBridge -> is_target_within_collection_range(): ENDS, fish_pos:{fish_robot_world_position}, target_pos: {target_world_position}, target_in_range: {target_in_range}")
             return target_in_range            

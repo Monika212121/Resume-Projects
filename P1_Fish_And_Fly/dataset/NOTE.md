@@ -35,3 +35,11 @@ NOTE: **In my local system, I only kept 5 images and labels in both train and va
 # 3. Test footage folder
 - In this dataset folder, there is a sub-folder `test_footage` where there is a collection of short videos, in which inference is runned or testing is verified for the entire project.
 - I mentioned this sub-folder in the `.gitignore` file due to memory constraints in github for pushing video clips.
+
+
+# 4. Inference videos formatting
+
+- I am splitting all inference videos in 10s each, for better inference.
+- For this purpose I am using code inside `tools/split_videos.py`. 
+- First I changed the resolution of these videos, to reduce file sizes for smooth inference. But when I did this using `tools/convert_videos.py` file, I started getting wrong detections because YOLO couldn't recognized the compresed videos, it can't recognized shapes, textures, patterns then.
+- So I am removed the converted videos. I am using the original video, just spllited in 10 seconds each.

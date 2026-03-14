@@ -12,8 +12,10 @@ from src.common.logging.result_logger import OutcomeLogger
 
 from src.fish.stage1_vision.pipeline import VisionPipeline
 from src.fish.stage1_vision.io.factory import build_vision_input
+from src.fish.stage1_vision.io.folder_video import FolderVideoInput
 from src.fish.stage2_decision.pipeline import DecisionPipeline
 from src.fish.stage2_decision.entity import LifeCycleAction, LifeCycleCommand
+from src.fish.stage3_action.entity import MissionPhase
 from src.fish.stage3_action.mission_planner import MissionPlanner
 
 
@@ -78,6 +80,15 @@ class FishPipeline:
     def tick(self) -> SystemHeartbeat:
         try:
             logger.info("*********************************************FISH MODULE SYSTEM: STARTS********************************************")
+
+            # Mode switching based on mission phase                                                         # refer VISION_NOTE.md(5)
+            if isinstance(self.vision_input, FolderVideoInput):
+                if self.mission_planner_obj.phase == MissionPhase.SURFACE:
+                    self.vision_input.switch_mode("surface")
+
+                elif self.mission_planner_obj.phase == MissionPhase.UNDERWATER:
+                    self.vision_input.switch_mode("underwater")
+
 
             # Reading the frame of visual feed
             frame = self.vision_input.read()                             

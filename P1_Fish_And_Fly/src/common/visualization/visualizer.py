@@ -44,7 +44,7 @@ class Visualizer:
                 logger.info("Visualizer -> visualize_objects(): ENDS, There is no active object")
 
                 #  Always draw grasp threshold line for consistency
-                display_frame = self.overlay_obj._draw_grasp_threshold(frame = frame, threshold_distance = self.overlay_obj.threshold_distance)
+                #display_frame = self.overlay_obj._draw_grasp_threshold(frame = frame, threshold_distance = self.overlay_obj.threshold_distance)
                 cv2.imshow("My Fish machine underwater garbage tracker", display_frame)
                 return
 
