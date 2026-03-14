@@ -11,12 +11,16 @@ from src.fish.stage2_decision.entity import CategorizedObjects, LifeCycleAction,
 
 from src.fish.stage3_action.entity import ActionStatus
 
+from src.fly.stage2_action.entity import StateDeltas
 
 
 class OutcomeLogger:
     def __init__(self):
-        self.garbage_logger = GarbageCSVLogger()
+        self.garbage_logger = GarbageCSVLogger(reset= True)                                                            # logs Fish result
+        self.state_delta_logger = StateDeltaCSVLogger(reset= True)                                                     # logs Fly result
+
         self.logged_ids: Set[int] = set()                                                                   # list of track_ids of objects already logged. 
+        self.counter: int = 0           # REMOVE LATER
 
 
 

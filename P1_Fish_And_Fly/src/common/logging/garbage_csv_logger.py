@@ -5,16 +5,23 @@ from datetime import datetime, timezone
 from src.common.logging import logger
 from src.common.logging.entity import GarbageLogEntry
 
+from src.fly.stage2_action.entity import StateDeltas
+
+
 
 class GarbageCSVLogger:
     """
     Persistent garbage CSV for garbage lifecycle outcomes.
     """
-    def __init__(self):                         # add output_dir and file_path as parameters
+    def __init__(self, reset: bool = False):                         # add output_dir and file_path as parameters
         output_dir = "artifacts/logs"           # later pass in config 
         file_path = "garbage_log.csv"
+
         os.makedirs(output_dir, exist_ok= True)
         self.file_path = os.path.join(output_dir, file_path)
+
+        if reset and os.path.exists(self.file_path):
+            os.remove(self.file_path)
 
         self._init_csv()        # call to create a new csv file
 

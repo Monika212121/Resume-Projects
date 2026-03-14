@@ -19,7 +19,6 @@ from src.fish.stage4_simulation.entity import SimulationConfig
 from src.fish.stage4_simulation.sim_bridge import SimulationBridge
 
 
-
 class MissionPlanner:
     """
     Contains and activates the mission plan layout for the fish machine.
@@ -176,8 +175,6 @@ class MissionPlanner:
                     # Log the new position for trajectory visualization.
                     self.navigator.step_count += 1                                                          # Maintaining step count for trajectory logging.
                     self.navigator.log_trajectory_point() 
-
-                    # Updating fish machine's direction                                                  
 
                 else:
                     logger.info(f"MissionPlanner -> tick(): Simulation failed, error from Simulation module")

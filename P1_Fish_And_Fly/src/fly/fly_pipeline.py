@@ -2,6 +2,7 @@
 
 from src.common.logging import logger
 from src.common.entity.heartbeat import SystemHeartbeat
+from src.common.logging.result_logger import OutcomeLogger
 from src.common.config.configuration import ConfigurationManager
 from src.common.alerts_and_notifications.notifier import AlertNotifier, AlertType
 
@@ -23,6 +24,7 @@ class FlyPipeline:
         self.monitor = HeartbeatMonitor(self.monitor_config)                                                   
 
         self.notifier = AlertNotifier()
+        self.state_delta_logger = OutcomeLogger()
 
 
 
@@ -60,7 +62,7 @@ class FlyPipeline:
     
 
 
-    def tick(self, heartbeat: SystemHeartbeat) -> StateDeltas:
+    def tick(self, heartbeat: SystemHeartbeat) -> None:
         try:
             logger.info("*********************************************FLY MODULE SYSTEM: STARTS********************************************")
 
@@ -89,8 +91,10 @@ class FlyPipeline:
                 self.flight.hover()
 
 
+            # Logging the fish machine's health and state deltas w.r.t. Fly machine, in `state_delta.csv` file.
+            self.state_delta_logger.log_fly_state_delta(delta= fish_health)
             logger.info("*********************************************FLY MODULE SYSTEM: ENDS********************************************")
-            return fish_health
+            return
         
 
         except Exception as e:
