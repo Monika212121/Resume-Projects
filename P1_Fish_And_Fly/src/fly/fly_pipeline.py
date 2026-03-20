@@ -6,7 +6,8 @@ from src.common.logging.result_logger import OutcomeLogger
 from src.common.config.configuration import ConfigurationManager
 from src.common.alerts_and_notifications.notifier import AlertNotifier, AlertType
 
-from src.fly.stage1_action.entity import FishStatus, StateDeltas
+from src.fly.stage1_action.entity import FishStatus
+from src.fly.stage1_action.coverage_tracker import CoverageTracker
 from src.fly.stage1_action.flight_controller import FlightController
 from src.fly.stage1_action.heartbeat_monitor import HeartbeatMonitor
 
@@ -16,6 +17,7 @@ class FlyPipeline:
     def __init__(self, fly_cfg_mg: ConfigurationManager):
 
         # Loading the Fly's configurations
+        self.log_file_paths = fly_cfg_mg.get_log_file_paths()
         self.controller_config = fly_cfg_mg.get_controller_config()
         self.monitor_config = fly_cfg_mg.get_monitor_config()
 
@@ -24,7 +26,8 @@ class FlyPipeline:
         self.monitor = HeartbeatMonitor(self.monitor_config)                                                   
 
         self.notifier = AlertNotifier()
-        self.state_delta_logger = OutcomeLogger()
+        self.result_logger = OutcomeLogger(log_file_paths= self.log_file_paths)
+        self.coverage_tracker = CoverageTracker(grid_size= 100)
 
 
 
@@ -66,25 +69,31 @@ class FlyPipeline:
         try:
             logger.info("*********************************************FLY MODULE SYSTEM: STARTS********************************************")
 
-            # Monitoring of Fish machine
-            fish_health = self.monitor.calculate_fish_state_deltas(heartbeat = heartbeat)
-            
+            # Updating Fish machine's coverage area for current position and operation depth
+            self.coverage_tracker.update_coverage_area((heartbeat.position.x, heartbeat.position.y, heartbeat.position.z))
+
+            # Retrieving Fish machine's coverage area percentages
+            coverage_area_percentages = self.coverage_tracker.get_coverage_percentages()
+
+            # Calculating Fish machine's state deltas
+            state_deltas = self.monitor.calculate_fish_state_deltas(heartbeat = heartbeat, coverage_area_pcts = coverage_area_percentages)
+
             # Raising alert according to the Fish's state deltas, calculated above                                                                           
-            if not fish_health.alive:
+            if state_deltas.fish_state != FishStatus.ALIVE.name:
                 self.notifier.raise_alert(AlertType.MACHINE_LOST, "Fish heartbeat lost", metadata= {})
 
                 # Return the Fly machine to HQ
                 self.flight.return_home()
 
 
-            elif fish_health.status == FishStatus.FROZEN:
+            elif state_deltas.fish_state == FishStatus.FROZEN.name:
                 self.notifier.raise_alert(AlertType.MACHINE_STUCK,"Fish execution frozen", metadata={})
 
                 # Hold Fly machine at the hover height
                 self.flight.hold_position()
 
 
-            elif fish_health.status == FishStatus.LAGGING:
+            elif state_deltas.fish_state == FishStatus.LAGGING.name:
                 self.notifier.raise_alert(AlertType.MACHINE_LAGGING, "Fish responding slowly", metadata={})
 
                 # Hover the Fly machine
@@ -92,7 +101,7 @@ class FlyPipeline:
 
 
             # Logging the fish machine's health and state deltas w.r.t. Fly machine, in `state_delta.csv` file.
-            self.state_delta_logger.log_fly_state_delta(delta= fish_health)
+            self.result_logger.telemetry_logger.log_fish_machine_telemetry(delta= state_deltas)
             logger.info("*********************************************FLY MODULE SYSTEM: ENDS********************************************")
             return
         

@@ -24,6 +24,7 @@ class FishPipeline:
     def __init__(self, fish_cfg_mg: ConfigurationManager):
 
         # Loading the Fish's configurations
+        self.log_file_paths = fish_cfg_mg.get_log_file_paths()
         self.vision_config = fish_cfg_mg.get_vision_config()
         self.decision_config = fish_cfg_mg.get_decision_config()
         self.action_config = fish_cfg_mg.get_action_config()
@@ -35,7 +36,7 @@ class FishPipeline:
         self.mission_planner_obj = MissionPlanner(action_config = self.action_config, simulation_config= self.simulation_config)
         self.fish_frame_projector_obj = FishFrameProjector()
         self.visualization_obj = Visualizer()
-        self.result_logger = OutcomeLogger()
+        self.result_logger = OutcomeLogger(log_file_paths = self.log_file_paths)
 
 
 
@@ -139,10 +140,10 @@ class FishPipeline:
 
             
             # Logging lost objects(which lost before getting selected)
-            self.result_logger.log_lost_object(lost_objects = lost_objects)
+            self.result_logger.object_logger.log_lost_object(lost_objects = lost_objects)
 
             # Logging non-selectable objects[Unsafe targets + Env + Hazard]
-            self.result_logger.log_non_selectable_objects(categorized_objects= categorized_objects)
+            self.result_logger.object_logger.log_non_selectable_objects(categorized_objects= categorized_objects)
 
             # Processing selection commands one by one
             for command in selection_commands:    
@@ -156,7 +157,7 @@ class FishPipeline:
                             selection_count= command.selection_count,
                             priority_score= 0.0
                         )
-                        self.result_logger.log_selected_target(selected_object= selected_target, feedback_command = feedback_command)
+                        self.result_logger.object_logger.log_selected_target(selected_object= selected_target, feedback_command = feedback_command)
 
                 # Emitting select command(from Decision -> Vision Aggregator) to update the object's current status as SELECTED.
                 elif command.action == LifeCycleAction.SELECT:
@@ -226,7 +227,7 @@ class FishPipeline:
                 return heartbeat
 
             # Logging target object's final action result, in the `garbage.csv` file.
-            self.result_logger.log_selected_target(selected_object= selected_target, feedback_command = feedback_command)   
+            self.result_logger.object_logger.log_selected_target(selected_object= selected_target, feedback_command = feedback_command)   
 
             # If mission is in progress, then create and emit "No issue" heartbeat signal
             heartbeat = SystemHeartbeat.now(

@@ -2,7 +2,7 @@ import time
 import streamlit as st
 
 
-def render_home(stats, mission_start_time: float):
+def render_home():
 
     # =====================================================
     # GLOBAL STYLES
@@ -131,43 +131,3 @@ def render_home(stats, mission_start_time: float):
         )
 
     st.markdown("<br><br>", unsafe_allow_html=True)
-
-    # =====================================================
-    # KEY MISSION METRICS
-    # =====================================================
-    elapsed_time = int(time.time() - mission_start_time)
-
-    m1, m2, m3 = st.columns(3)
-
-    with m1:
-        st.markdown(
-            f"""
-            <div class="metric-box">
-                <div style="color:#666;">Mission Phase</div>
-                <h2>{stats.mission_phase}</h2>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    with m2:
-        st.markdown(
-            f"""
-            <div class="metric-box">
-                <div style="color:#666;">Area Cleaned</div>
-                <h2>{stats.coverage_stats["cleaned_pct"]}%</h2>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    with m3:
-        st.markdown(
-            f"""
-            <div class="metric-box">
-                <div style="color:#666;">Elapsed Time</div>
-                <h2>{elapsed_time}s</h2>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )

@@ -36,12 +36,13 @@ class FishStatus(Enum):
 
 @dataclass
 class StateDeltas:
-    alive: bool
-    status: FishStatus
+    mission_phase: str
+    fish_state: str
+    fish_x: float
+    fish_y: float
+    fish_z: float
+    surface_coverage_pct: float
+    underwater_coverage_pct: float
     communication_delta: float
     fish_progress_delta: float
     silence_delta: float
-
-
-
-

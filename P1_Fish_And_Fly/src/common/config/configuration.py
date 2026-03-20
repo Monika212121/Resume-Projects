@@ -1,8 +1,8 @@
-from argparse import Action
 from typing import List
 from box import ConfigBox
 from dataclasses import fields
 
+from src.common.entity.log_file_paths import LogFilePaths
 from src.common.config.config_loader import load_machine_config
 from src.common.config.config_mapper import parse_waypoint, parse_waypoint_list
 
@@ -15,24 +15,45 @@ from src.fish.stage3_action.entity import ActionConfig, Mission, Bin, Navigation
 from src.fish.stage4_simulation.entity import SimulationVisualization, SimulationConfig, SpawningConfig, SpawnObject, Visual, SpawnZone
 
 
+
 class ConfigurationManager():
     """
     Central Configuration Mananger for Fish/ Fly
     """
+
+    # NOTE: self._config contains (base + all stages of specific machine) configs
+    # Example: If I pass machine = fish, then self._config contains all the [base.yaml + (vision,decision,action,simulation).yaml] config. 
+    # And If I pass machine = fly, self._config contains [base.yaml + action.yaml] config
+
+
     #-----------------------------------------BASIC CONFIGURATIONS-------------------------------------------------------------
+    
     def __init__(self, machine: str):
+        self.machine = machine
         self._config: ConfigBox = load_machine_config(machine)
 
-    # It contains (base + all 4 stages) configs
+
     def get_all_config(self) -> ConfigBox:
         return self._config
     
+
+    # LOG FILE CONFIGURATION
+    def get_log_file_paths(self) -> LogFilePaths:
+        cfg = self._config.log_paths
+
+        log_file_paths = LogFilePaths(
+            mission_object_log = cfg.mission_object_log,
+            mission_telemetry_log = cfg.mission_telemetry_log
+        )
+
+        return log_file_paths
     
+
     #-----------------------------------------VISUALIZATION CONFIGURATIONS---------------------------------------------------------------
 
     # 1. PERCEPTION
     def get_perception_visualization_config(self) -> PerceptionVisualization:
-        cfg = self._config.vision.visualization
+        cfg = self._config[self.machine].vision.visualization
 
         visualizer_config = PerceptionVisualization(
             enabled_gui= cfg.enabled_gui,
@@ -43,7 +64,7 @@ class ConfigurationManager():
     
     # 2. SIMULATION
     def get_simulation_visualization_config(self) -> SimulationVisualization:
-        cfg = self._config.simulation.visualization
+        cfg = self._config[self.machine].simulation.visualization
 
         simulation_config = SimulationVisualization(
             enabled_gui= cfg.enabled_gui,
@@ -73,7 +94,7 @@ class ConfigurationManager():
 
     
     def get_io_config(self) -> IOConfig:
-        cfg = self._config.vision.io
+        cfg = self._config[self.machine].vision.io
 
         # Mapping IO from ConfgBox ->  IOConfig object
         cfg_dict = {}
@@ -85,15 +106,15 @@ class ConfigurationManager():
 
 
     def get_class_names(self) -> List[str]:
-        cfg = self._config.vision.class_names
+        cfg = self._config[self.machine].vision.class_names
 
         class_list = list(cfg)
         return class_list    
 
 
     def get_training_config(self) -> YOLOModelTrainerConfig:
-        model_name_used: str = self._config.vision.training.model_name
-        cfg = self._config.vision.training.model_parameters
+        model_name_used: str = self._config[self.machine].vision.training.model_name
+        cfg = self._config[self.machine].vision.training.model_parameters
 
         # Mapping training parameters from ConfgBox ->  ModelParameter object
         cfg_dict = {}
@@ -109,7 +130,7 @@ class ConfigurationManager():
 
 
     def get_inference_config(self) -> InferenceConfig:
-        cfg = self._config.vision.inference
+        cfg = self._config[self.machine].vision.inference
 
         # Mapping inference from ConfgBox ->  InfernceConfig object
         cfg_dict = {}
@@ -122,7 +143,7 @@ class ConfigurationManager():
 
     # Used technique = BORTSORT
     def get_tracking_config(self) -> TrackingConfig:
-        cfg = self._config.vision.tracking
+        cfg = self._config[self.machine].vision.tracking
 
         # Mapping tracking from ConfgBox ->  TrackingConfig object
         cfg_dict = {}
@@ -134,7 +155,7 @@ class ConfigurationManager():
     
 
     def get_aggregation_config(self) -> AggregationConfig:
-        cfg = self._config.vision.aggregation
+        cfg = self._config[self.machine].vision.aggregation
 
         # Mapping aggregation from ConfgBox ->  AggregationConfig object
         cfg_dict = {}
@@ -146,7 +167,7 @@ class ConfigurationManager():
     
 
     def get_categories_config(self) -> Categories:
-        cfg = self._config.vision.categories
+        cfg = self._config[self.machine].vision.categories
 
         # Mapping categories from ConfgBox ->  Categories object
         cfg_dict = {}
@@ -170,7 +191,7 @@ class ConfigurationManager():
     
 
     def get_rule_filter_config(self) -> RuleFilterConfig:
-        cfg = self._config.decision.rule_filter
+        cfg = self._config[self.machine].decision.rule_filter
         cfg_dict = {}
 
         for f in fields(RuleFilterConfig):
@@ -192,7 +213,7 @@ class ConfigurationManager():
     
     
     def get_reasoner_config(self) -> PriorityReasonerConfig:
-        cfg = self._config.decision.reasoner
+        cfg = self._config[self.machine].decision.reasoner
         cfg_dict = {}
 
         # Mapping categories from ConfgBox ->  PriorityReasonerConfig object
@@ -217,7 +238,7 @@ class ConfigurationManager():
     
 
     def get_mission_config(self) -> Mission:
-        cfg = self._config.action.mission
+        cfg = self._config[self.machine].action.mission
 
         mission_cfg = Mission(
             start_point= parse_waypoint(cfg.start_point),
@@ -233,7 +254,7 @@ class ConfigurationManager():
     
 
     def get_bin_manager_config(self) -> Bin:
-        cfg = self._config.action.mission.bin_manager
+        cfg = self._config[self.machine].action.mission.bin_manager
 
         bin_cfg = Bin(
             bin_capacity= int(cfg.bin_capacity),
@@ -244,7 +265,7 @@ class ConfigurationManager():
     
 
     def get_navigation_config(self) -> Navigation:
-        cfg = self._config.action.mission.navigation 
+        cfg = self._config[self.machine].action.mission.navigation 
 
         nav_cfg = Navigation(
             start_point= parse_waypoint(cfg.start_point),
@@ -258,7 +279,7 @@ class ConfigurationManager():
     
 
     def get_dump_location_config(self) -> DumpLocation:
-        cfg = self._config.action
+        cfg = self._config[self.machine].action
 
         dump_location = DumpLocation(
             d_points = parse_waypoint_list(cfg.dump_location)
@@ -268,7 +289,7 @@ class ConfigurationManager():
 
 
     def get_cost_model_config(self) -> CostModel:
-        cfg = self._config.action.cost_model
+        cfg = self._config[self.machine].action.cost_model
 
         weights = CostWeights(
             travel_time=cfg.weights.travel_time,
@@ -324,7 +345,7 @@ class ConfigurationManager():
     
 
     def get_spawn_visual_config(self) -> Visual:
-        cfg = self._config.simulation.spawning.visual
+        cfg = self._config[self.machine].simulation.spawning.visual
 
         visual_config = Visual(
             targets= self._parse_spawn_objects(cfg.targets),
@@ -353,7 +374,7 @@ class ConfigurationManager():
 
 
     def get_spawn_zone_config(self) -> SpawnZone:
-        cfg = self._config.simulation.spawning.zones
+        cfg = self._config[self.machine].simulation.spawning.zones
 
         zones_config = SpawnZone(
             targets = cfg.targets,
@@ -371,7 +392,7 @@ class ConfigurationManager():
     
     # FLIGHT CONTROLLER
     def get_controller_config(self) -> FlightControllerConfig:
-        cfg = self._config.action.controller
+        cfg = self._config[self.machine].action.controller
 
         controller_cfg = FlightControllerConfig(
             home= cfg.home
@@ -382,7 +403,7 @@ class ConfigurationManager():
 
     # HEARTBEAT MONITOR
     def get_monitor_config(self) -> MonitorConfig:
-        cfg = self._config.action.monitor
+        cfg = self._config[self.machine].action.monitor
 
         monitor_cfg = MonitorConfig(
             timeout_sec= cfg.timeout_sec,
