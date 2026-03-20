@@ -13,3 +13,8 @@ paths:
 runtime:
   mode: inference             # training | inference
   log_level: info
+
+
+log_paths:
+  mission_object_log: artifacts/logs/mission_object_log.csv
+  mission_telemetry_log: artifacts/logs/mission_telemetry_log.csv

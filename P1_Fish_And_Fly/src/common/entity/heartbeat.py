@@ -13,7 +13,6 @@ class SystemHeartbeat:
     mission_phase: MissionPhase             
     position: Waypoint
     timestamp: float
-    alive: bool = True
     issue: str = ""
 
     @staticmethod
@@ -24,6 +23,5 @@ class SystemHeartbeat:
             mission_phase=mission_phase,
             position=position,
             timestamp=time.time(),
-            alive=True,
             issue= issue
         )

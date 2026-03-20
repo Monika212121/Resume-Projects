@@ -3,7 +3,9 @@ from pathlib import Path
 from box import ConfigBox
 from box.exceptions import BoxValueError
 from ensure import ensure_annotations
+
 from src.common.logging import logger
+
 
 
 def find_project_root() -> Path:
@@ -16,6 +18,7 @@ def find_project_root() -> Path:
             return parent
         
     raise FileNotFoundError("find_project_root(): Error in finding `configs/base.yaml`. Please check project structure.")
+
 
 
 @ensure_annotations
@@ -33,7 +36,6 @@ def read_yaml(path_to_yaml: Path) -> ConfigBox:
     Returns:
         ConfigBox: Parsed YAML content
     """
-
     try:
         with open(path_to_yaml, "r") as yaml_file:
             content = yaml.safe_load(yaml_file)
@@ -54,44 +56,42 @@ def read_yaml(path_to_yaml: Path) -> ConfigBox:
 
 
 @ensure_annotations
-def load_machine_config(machine: str) -> ConfigBox:    
+def load_machine_config(machine: str) -> ConfigBox:
     """
-    Load base config + machine-specific stage configs
-    (vision, language, decision, action).
+    Load base config + machine specific configs.
 
     Args:
-        machine (str): machine name ('fish' or 'fly')
-        config_dir (Path): root config directory
+        machine: 'fish' or 'fly'
 
     Returns:
-        ConfigBox: merged configuration object
-    """   
+        ConfigBox: merged configuration
+    """
+    try:
+        project_root = find_project_root()
+        configs_dir = project_root / "configs"
 
-    #logger.info("load_machine_config(): START")
-    #logger.info(f"Loading configurations for machine: {machine}")
+        # ---------------- LOAD BASE CONFIG ----------------
+        base_config = read_yaml(configs_dir / "base.yaml")
 
-    project_root = find_project_root()
-    #logger.info(f"Project root resolve to : {project_root}")
+        config = ConfigBox(base_config)
 
-    #----------------LOAD BASE CONFIG-----------------
-    configs_dir = project_root / "configs"
-    config = read_yaml(configs_dir/"base.yaml")
+        # --------------- LOAD MACHINE CONFIGS -------------
+        machine_dir = configs_dir / machine
 
+        if not machine_dir.exists():
+            raise FileNotFoundError(f"Config directory not found: {machine_dir}")
 
-    #----------LOAD STAGE-SPECIFIC CONFIG-------------
-    stages = ["vision","decision","action","simulation"]
+        config[machine] = ConfigBox()
 
-    for stage in stages:
-        stage_config_path = configs_dir/machine/f"{stage}.yaml"
+        # load all yaml files automatically
+        for yaml_file in machine_dir.glob("*.yaml"):
 
-        if not stage_config_path.exists():
-            raise FileNotFoundError(f"load_machine_config(): Missing config file: {stage_config_path}")
+            stage_name = yaml_file.stem
+            config[machine][stage_name] = read_yaml(yaml_file)
 
-        config[stage] = read_yaml(stage_config_path)
-        #logger.info(f"{stage.capitalize()} config loaded for {machine}")
-
+        return config
     
-    #logger.info(f"All configurations loaded successfully for machine: {machine}, \n{config}",)
-    #logger.info("load_machine_config(): END")
 
-    return config
+    except Exception as e:
+        logger.error(f"Error occurred in load_machine_config(), error: {e}")
+        raise e

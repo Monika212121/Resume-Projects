@@ -11,8 +11,10 @@
        │  (events / telemetry)
        ▼
 ┌────────────────────┐
-│ garbage_log.csv    │  ← SINGLE SOURCE OF TRUTH
-│ (or JSONL later)   │
+│   object_log.csv   │  ← SINGLE SOURCE OF TRUTH
+│ (or JSONL later)   |
+|        +           |
+| telemetry_log.csv  |
 └──────┬─────────────┘
        │
        ▼

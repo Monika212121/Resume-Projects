@@ -10,3 +10,5 @@ pyyaml
 pathlib
 python-box
 ensure
+seaborn
+reportlab       # for exporting resutls from UI

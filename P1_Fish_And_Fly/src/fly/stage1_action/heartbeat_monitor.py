@@ -1,6 +1,7 @@
 import time
 
 from src.common.logging import logger
+from src.common.logging.entity import CoverageArea
 from src.common.entity.heartbeat import SystemHeartbeat
 
 from src.fly.stage1_action.entity import MonitorConfig, StateDeltas, FishStatus
@@ -16,8 +17,9 @@ class HeartbeatMonitor:
         self.last_fish_ts = None                                                                            # last time, heartbeat sent from Fish
 
 
+
     # Implemented Cross-system reconciliation logic
-    def calculate_fish_state_deltas(self, heartbeat: SystemHeartbeat) -> StateDeltas:
+    def calculate_fish_state_deltas(self, heartbeat: SystemHeartbeat, coverage_area_pcts: CoverageArea) -> StateDeltas:
         try:
             logger.info(f"HeartbeatMonitor -> calculate_fish_state_deltas(): STARTS, heartbeat: {heartbeat}")
 
@@ -30,8 +32,13 @@ class HeartbeatMonitor:
                 self.last_fish_ts = curr_emitted_fish_ts
 
                 state_deltas = StateDeltas(
-                    alive= True,
-                    status= FishStatus.INIT,
+                    mission_phase= heartbeat.mission_phase.name,
+                    fish_state= FishStatus.INIT.name,
+                    fish_x= heartbeat.position.x,
+                    fish_y= heartbeat.position.y,
+                    fish_z= heartbeat.position.z,
+                    surface_coverage_pct= coverage_area_pcts.surface_percentge,
+                    underwater_coverage_pct= coverage_area_pcts.underwater_percentage,
                     communication_delta= 0.0,
                     fish_progress_delta= 0.0,
                     silence_delta= 0.0
@@ -56,8 +63,13 @@ class HeartbeatMonitor:
             # 3. Deciding the status of Fish
             if silence_delta > self.timeout:
                 state_deltas = StateDeltas(
-                    alive = False,
-                    status= FishStatus.DEAD,
+                    mission_phase= heartbeat.mission_phase.name,
+                    fish_state= FishStatus.DEAD.name,
+                    fish_x= heartbeat.position.x,
+                    fish_y= heartbeat.position.y,
+                    fish_z= heartbeat.position.z,
+                    surface_coverage_pct= coverage_area_pcts.surface_percentge,
+                    underwater_coverage_pct= coverage_area_pcts.underwater_percentage,
                     communication_delta= communication_delta,
                     fish_progress_delta= fish_progress_delta,
                     silence_delta= silence_delta
@@ -78,8 +90,13 @@ class HeartbeatMonitor:
 
 
             state_deltas = StateDeltas(
-                alive= True,
-                status= curr_status,
+                mission_phase= heartbeat.mission_phase.name,
+                fish_state= curr_status.name,
+                fish_x= heartbeat.position.x,
+                fish_y= heartbeat.position.y,
+                fish_z= heartbeat.position.z,
+                surface_coverage_pct= coverage_area_pcts.surface_percentge,
+                underwater_coverage_pct= coverage_area_pcts.underwater_percentage,
                 communication_delta= communication_delta,
                 fish_progress_delta= fish_progress_delta,
                 silence_delta= silence_delta
