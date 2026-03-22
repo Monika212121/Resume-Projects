@@ -12,6 +12,6 @@ class NotificationType(Enum):
     MACHINE_DESCENDED = "machine_descended"
     UNDERWATER_CLEANING_ENDED = "underwater_cleaning_ended"
     MACHINE_ASCENDED = "machine_ascended"
-    REACHED_HEADQUARTER = "reached_HQ"
+    REACHED_HEADQUARTER = "reached_Head_Quarter"
 
     

@@ -7,7 +7,7 @@ from src.common.logging import logger
 
 from src.fish.stage3_action.entity import Waypoint, MissionPhase
 from src.fish.stage4_simulation.clamper import clamp_position
-from src.fish.stage4_simulation.constants import SLOW_TELEPORT_PHASES
+from src.fish.stage4_simulation.constants import SLOW_TELEPORT_PHASES, STOP_DELAY, TEXT_COLOR
 
 
 
@@ -52,22 +52,27 @@ class RobotController:
         # Clamping Fish robot position, to avoid going outside the defined operation workspace 
         allowed_to_exit_safe_boundary = current_mission_phase in SLOW_TELEPORT_PHASES
 
-        # Fish machine can cross this safe boundary, only when in UNLOADING/ ABORT/ RETURN phase
-        safe_position = pose if allowed_to_exit_safe_boundary else clamp_position(position=pose)
+        # Fish machine can cross this safe boundary, only when in UNLOADING/ RETURN_HQ/ ABORT/ FAILED phases
+        safe_position = pose if allowed_to_exit_safe_boundary else clamp_position(position= pose)
 
         logger.info(f"RobotController -> teleport(), safe_position: {safe_position}")
 
-        # CASE1: If mission phase is SLOW_TELEPORT_PHASES, then traverse slower
+        # CASE1: SLOW TRAVERSAL: If mission phase is SLOW_TELEPORT_PHASES, then traverse slower
         if allowed_to_exit_safe_boundary:
             fish_current_pos, _ = p.getBasePositionAndOrientation(self.fish_robot_id)
             start = Waypoint(*fish_current_pos)
+
+            # Moves slowly towards the target destination
             self._slow_teleport(
-                start=start,
-                end=safe_position,
-                steps=40,
-                step_delay=0.04,  # slower & visible
+                start= start,
+                end= safe_position,
+                curr_phase = current_mission_phase,
+                steps= 40,
+                step_delay= STOP_DELAY[current_mission_phase],                                               # slower & visible
             )
-        # CASE2: Normal traversal
+
+
+        # CASE2: NORMAL TRAVERSAL
         else:
             p.resetBasePositionAndOrientation(
                 self.fish_robot_id,
@@ -89,7 +94,8 @@ class RobotController:
 
 
 
-    def _slow_teleport(self, start: Waypoint, end: Waypoint, steps: int = 30, step_delay: float = 0.03):
+    def _slow_teleport(self, start: Waypoint, end: Waypoint, curr_phase: MissionPhase, steps: int = 30, step_delay: float = 0.04):
+
         for alpha in np.linspace(0.0, 1.0, steps):
             interp_pos = Waypoint(
                 x=start.x + alpha * (end.x - start.x),
@@ -101,6 +107,13 @@ class RobotController:
                 self.fish_robot_id,
                 [interp_pos.x, interp_pos.y, interp_pos.z],
                 [0, 0, 0, 1],
+            )
+
+            p.addUserDebugText(
+                curr_phase.name,
+                [interp_pos.x, interp_pos.y, interp_pos.z + 2],
+                textColorRGB= TEXT_COLOR[curr_phase],
+                lifeTime=0.1
             )
 
             p.stepSimulation()

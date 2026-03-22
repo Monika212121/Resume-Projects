@@ -75,7 +75,7 @@ class MissionPhase(Enum):
     DESCEND = 2
     UNDERWATER = 3
     ASCEND = 4
-    RETURN = 5
+    RETURN_HQ = 5
     DONE = 6
     ABORT = 7
     FAILED = 8

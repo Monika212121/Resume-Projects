@@ -3,6 +3,7 @@
 import cv2
 
 from src.common.logging import logger
+from src.common.logging import telemetry_csv_logger
 from src.common.utils.mission import action_is_allowed
 from src.common.entity.heartbeat import SystemHeartbeat
 from src.common.visualization.visualizer import Visualizer
@@ -31,12 +32,12 @@ class FishPipeline:
         self.simulation_config = fish_cfg_mg.get_simulation_config() 
 
         # Instantiating the pipelines
+        self.result_logger = OutcomeLogger(log_file_paths = self.log_file_paths)
         self.vision_pipeline_obj = VisionPipeline(vision_config = self.vision_config)
         self.decision_pipeline_obj = DecisionPipeline(decision_config = self.decision_config)
-        self.mission_planner_obj = MissionPlanner(action_config = self.action_config, simulation_config= self.simulation_config)
+        self.mission_planner_obj = MissionPlanner(action_config = self.action_config, simulation_config= self.simulation_config, telemetry_logger = self.result_logger.telemetry_logger)
         self.fish_frame_projector_obj = FishFrameProjector()
         self.visualization_obj = Visualizer()
-        self.result_logger = OutcomeLogger(log_file_paths = self.log_file_paths)
 
 
 
