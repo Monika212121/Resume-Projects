@@ -24,7 +24,7 @@ class SimulationBridge:
         self.object_manager = ObjectManager(visual_config = self.spawn_visual_config)
 
         self.simulation_started = False
-        self.grasp_threshold: float = 5.0
+        self.grasp_threshold: float = 2.0
 
 
 

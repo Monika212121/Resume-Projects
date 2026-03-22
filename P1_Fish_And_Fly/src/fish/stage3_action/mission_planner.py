@@ -1,10 +1,13 @@
 import time
 from typing import Optional, Dict, Any, List
 
+from src.fly.stage1_action.entity import FishStatus, StateDeltas
+
 from src.common.logging import logger
 from src.common.utils.mission import is_reached_target
 from src.common.projection.entity import FishFrameObject
 from src.common.entity.fish_machine_info import FishNavigationInfo
+from src.common.logging.telemetry_csv_logger import TelemetryCSVLogger
 from src.common.alerts_and_notifications.notifier import AlertNotifier
 from src.common.alerts_and_notifications.alert_types import AlertType, ErrorType
 from src.common.alerts_and_notifications.notification_types import NotificationType
@@ -19,6 +22,7 @@ from src.fish.stage4_simulation.entity import SimulationConfig
 from src.fish.stage4_simulation.sim_bridge import SimulationBridge
 
 
+
 class MissionPlanner:
     """
     Contains and activates the mission plan layout for the fish machine.
@@ -30,7 +34,7 @@ class MissionPlanner:
         - Resume after action feedback
 
     """
-    def __init__(self, action_config: ActionConfig, simulation_config: SimulationConfig):
+    def __init__(self, action_config: ActionConfig, simulation_config: SimulationConfig, telemetry_logger: TelemetryCSVLogger):
         self.mission_cfg = action_config.mission
         self.cost_cfg = action_config.cost_model
         self.dump_location_cfg = action_config.dump_location
@@ -60,7 +64,7 @@ class MissionPlanner:
 
         # TODO: REMOVE AFTER TESTING
         self.tick_count: int = 0
-
+        self.telemetry_logger = telemetry_logger                                                            # To log intermediate phases, refer ACTION_NOTES.md(12)
 
 
 
@@ -121,7 +125,7 @@ class MissionPlanner:
                 best_dump_point = self.garbage_unloader.find_best_dump_point(current_position= self.freeze_mission_data.last_position)
                 
                 # First reach the best dump-point and then return to the freezed last position, from where bin unloading started
-                is_reached_after_unload = self.execute_navigation_to(destination= best_dump_point, return_back= True)
+                is_reached_after_unload = self.execute_navigation_to(destination= best_dump_point, return_back= True)       # telemetry logged inside
                 if not is_reached_after_unload:
                     logger.info(f"MissionPlanner -> tick(): Error occurred in unloading bin, Simulation error")
                     self.abort_mission()
@@ -200,6 +204,32 @@ class MissionPlanner:
 
 
 
+    def get_telemetry_for_non_exposed_phases(self) -> StateDeltas:                                          #refer ACTION_NOTES.md(12)
+        try:
+            # Non exposed Phases: ASCEND | DESCEND | ABORT | RETURN_HQ | UNLOADING
+
+            telemetry = StateDeltas(
+                mission_phase= self.phase.name,
+                fish_state= FishStatus.ALIVE.name,
+                fish_x= self.navigator.current_position.x,
+                fish_y= self.navigator.current_position.y,
+                fish_z= self.navigator.current_position.z,
+                surface_coverage_pct= 0.0,
+                underwater_coverage_pct= 0.0,
+                communication_delta= 0.0,
+                fish_progress_delta= 0.0,
+                silence_delta= 0.0
+            )
+
+            return telemetry
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in MissionPlanner -> get_telemetry_for_non_exposed_phases(), error: {e}")
+            raise e
+
+
+
     def execute_navigation_to(self, destination: Waypoint, return_back: bool = False) -> bool:
         try:
             logger.info(f"MissionPlanner -> execute_navigation_to(): STARTS, destination: {destination}, returning: {return_back}")
@@ -210,7 +240,7 @@ class MissionPlanner:
             # Appending the fist position of the path, (start_position = current position)
             start_position = self.freeze_mission_data.last_position                     
             path_waypoints.append(start_position)
-
+            
             # Stepping forward step-wise, till fish machine reached destination
             while not self.navigator.is_reached_destination(target_position= destination):
 
@@ -228,6 +258,9 @@ class MissionPlanner:
                         logger.info(f"MissionPlanner -> execute_navigation_to(): Error occurred in reaching the water surface level")
                         return False
                     path_waypoints.append(curr_surface_pos)
+                    
+                    # Log intermediate motion steps, in `mission_telemetry_log.csv` file                                        # refer ACTION_NOTES.md(12)
+                    self.telemetry_logger.log_fish_machine_telemetry(delta= self.get_telemetry_for_non_exposed_phases())
 
 
                 # Now the fish machine is currently in surface, so directly traverse to the destination.
@@ -237,14 +270,16 @@ class MissionPlanner:
                     logger.info(f"MissionPlanner -> execute_navigation_to(): Simulation failed in reaching the HQ")
                     return False
                 path_waypoints.append(next_robot_pos)
+
+                # Log intermediate motion steps, in `mission_telemetry_log.csv` file
+                self.telemetry_logger.log_fish_machine_telemetry(delta= self.get_telemetry_for_non_exposed_phases())
             
             # Appending the last position of the path
             path_waypoints.append(destination)
-            
             logger.info(f"MissionPlanner -> execute_navigation_to(): path_waypoints: {path_waypoints}, no. of points: {len(path_waypoints)}")
 
 
-            # If return_back = True, it means that we need to return to the start position too (in case of Garbage Unloading)
+            # NOTE: If return_back = True, it means that we need to return to the start(mid way freezed) position too (in case of Garbage Unloading)
             if return_back:
                 path_waypoints.reverse()                                                                        # refer ACTION_NOTES.md()
 
@@ -254,14 +289,17 @@ class MissionPlanner:
                     if not reached:
                         logger.info(f"MissionPlanner -> execute_navigation_to(): Simulation failed in reaching the HQ")
                         return False
+                    
+                    # Log intermediate motion steps, in `mission_telemetry_log.csv` file
+                    self.telemetry_logger.log_fish_machine_telemetry(delta= self.get_telemetry_for_non_exposed_phases())
 
                 # Validate simulation result, if fish machine reached the start position or not
                 navigation_success = is_reached_target(current_position= self.navigator.current_position, target_position= start_position)
                 if not navigation_success:
-                    logger.info("MissionPlanner -> execute_navigation_to(): Unloading and return is FAILED")
+                    logger.info(f"MissionPlanner -> execute_navigation_to(): In {self.phase.name} phase, return is FAILED")
                     return False
                 
-                logger.info("MissionPlanner -> execute_navigation_to(): Unloading and return is successful")
+                logger.info(f"MissionPlanner -> execute_navigation_to(): In {self.phase.name} phase, return is SUCCESSFUL")
 
             logger.info(f"MissionPlanner -> execute_navigation_to(): ENDS, final location: {self.navigator.current_position}")
             return True
@@ -394,7 +432,7 @@ class MissionPlanner:
             raise e
 
 
-
+    # bridge function between simulator and navigator
     def simulate_step_forward(self, target_position: Waypoint) -> bool:
         """
         Apply a precomputed robot pose to the simulation.
@@ -459,75 +497,42 @@ class MissionPlanner:
             if self.phase == MissionPhase.SURFACE:
                 self.notifier.raise_notification(NotificationType.SURFACE_CLEANING_ENDED, "SURFACE CLEANING SUCCESS", {})
 
+                # Advance to the next phase: SURFACE -> DESCEND, moving vertically downwards, to reach the underwater level
                 self.phase = MissionPhase.DESCEND
+                underwater_start_pos = self.mission_cfg.navigation.end_point                                # (110, 110, 0)
+                underwater_start_pos.z = self.depths.underwater                                             # (110, 110, -8)            # changed depth
+                self._execute_depth_transition(target_position= underwater_start_pos)                       # telemetry logged inside
 
-                # Move downwards to reach the underwater level.
-                underwater_start_pos = self.mission_cfg.end_point                                           # (100, 100, 0)
-                underwater_start_pos.z = self.depths.underwater                                             # (100, 100, -8)
-            
-                reached_down = self.simulate_step_forward(target_position= underwater_start_pos)            
-                if not reached_down:            
-                    # Raise alert and abort the mission immediately.
-                    logger.info(f"MissionPlanner -> advance_phase(): Error occurred in DESCENDING, error: {ErrorType.EXECUTION_ERROR}")
-                    self.notifier.raise_alert(alert_type= AlertType.DESCEND_FAIL, message= "descend fail", metadata = {"error": ErrorType.EXECUTION_ERROR, "current location": self.navigator.current_position})
-                    self.phase = MissionPhase.ABORT
-                    self.abort_mission()
-
-                logger.info(f"MissionPlanner -> advance_phase(): Mission phase DESCEND is successful. Advance to next phase -> UNDERWATER")
-                self.notifier.raise_notification(NotificationType.MACHINE_DESCENDED, "DESCEND SUCCESS", {})
-
-                # Advance to the next phase.
+                # Advance to the next phase: DESCEND -> UNDERWATER, moving in underwater level, updated Fish machine's speed, for underwater navigation
                 self.phase = MissionPhase.UNDERWATER
-
-                # Underwater cleaning path is set for navigator.
                 self.navigator.set_path(depth = self.depths.underwater, start_position= underwater_start_pos)
-                logger.info(f"MissionPlanner -> advance_phase(): Path is set for underwater level cleaning, speed: {self.navigator.curr_speed}")
-
-                # Machine's speed is adjusted to underwater level.
                 self.navigator.curr_speed = self.navigator.speeds.underwater
-                logger.info(f"MissionPlanner -> advance_phase(): Machine's speed is changed for underwater level, updated speed: {self.navigator.curr_speed}")
+                logger.info(f"MissionPlanner -> advance_phase(): Path and speed are set, for underwater level cleaning, current speed: {self.navigator.curr_speed}")
 
 
             elif self.phase == MissionPhase.UNDERWATER:
                 self.notifier.raise_notification(NotificationType.UNDERWATER_CLEANING_ENDED, "UNDERWATER CLEANING SUCCESS", {})
 
-                self.phase = MissionPhase.ASCEND
+                # Advance to the next phase: UNDERWATER -> ASCEND, moving upwards to reach the surface level
+                self.phase = MissionPhase.ASCEND                                                            # (10, 10, -8)
+                self._execute_depth_transition(target_position= self.mission_cfg.navigation.start_point)    # (10, 10, 0)               # changed depth  
 
-                # Move upwards to reach the surface level.
-                reached_up = self.simulate_step_forward(target_position= self.mission_cfg.start_point)
-                if not reached_up:
-                    # Raise alert and abort the mission immediately.
-                    logger.info(f"MissionPlanner -> advance_phase(): Error occurred in ASCENDING, error: {ErrorType.EXECUTION_ERROR}")
-                    self.notifier.raise_alert(alert_type= AlertType.ASCEND_FAIL, message= "ascend fail", metadata = {"error": ErrorType.EXECUTION_ERROR, "current location": self.navigator.current_position})
-                    self.phase = MissionPhase.ABORT
-                    self.abort_mission()
-
-                logger.info(f"MissionPlanner -> advance_phase(): Mission phase ASCEND is successful. CLEANING is done successfully. Advance to next phase -> RETURN")
-                self.notifier.raise_notification(NotificationType.MACHINE_ASCENDED, "ASCEND SUCCESS", {})
-
-                # Advance to the next phase.
-                self.phase = MissionPhase.RETURN
-                
-                # Returning to the HQ, from mission start point.
-                hq_pos = self.mission_cfg.hq_point
-
-                reached_HQ = self.simulate_step_forward(target_position= hq_pos)
+                # Advance to the next phase: ASCEND -> RETURN_HQ, returning to the Base HQ, from allowed workspace's start point.
+                self.phase = MissionPhase.RETURN_HQ
+                reached_HQ = self.simulate_step_forward(target_position= self.mission_cfg.hq_point)
                 if not reached_HQ:
-                    # Raise alert and retry the return.
-                    logger.info(f"MissionPlanner -> advance_phase(): Error occurred in RETURNING TO HQ, error: {ErrorType.EXECUTION_ERROR}")
                     self.notifier.raise_alert(alert_type= AlertType.HQ_RETURN_FAIL, message= "return fail", metadata = {"error": ErrorType.EXECUTION_ERROR, "current location": self.navigator.current_position})
                     self.abort_mission()
 
-                logger.info(f"MissionPlanner -> advance_phase(): Mission phase RETURN TO HQ is successful.")
                 self.notifier.raise_notification(NotificationType.REACHED_HEADQUARTER, "HQ RETURN IS SUCCESS", {})
+                
+                # Log intermediate motion steps, in `mission_telemetry_log.csv` file                                            refer ACTION_NOTES.md(12)
+                self.telemetry_logger.log_fish_machine_telemetry(delta= self.get_telemetry_for_non_exposed_phases())
 
-                # Marking the mission as DONE, which will stop the Fish machine's execution.
+                # Marking the mission as DONE, raising notification of SUCCESSFUL MISSION COMPLETION and stopping this project execution
                 self.phase = MissionPhase.DONE
-
-                # Raise notification for successful mission completion.
-                self.mission_end_time = time.time()
-                self.notifier.raise_notification(NotificationType.MISSION_COMPLETED, "MISSION IS SUCCESSFUL", {"mission_finish_at": self.mission_end_time})
-                logger.info(f"MissionPlanner -> advance_phase(): Mission is completed successfully.")
+                self.notifier.raise_notification(NotificationType.MISSION_COMPLETED, "MISSION IS SUCCESSFUL", {"mission_finish_at": time.time()})
+                
 
             logger.info(f"MissionPlanner -> advance_phase(): ENDS, final position: {self.navigator.current_position}")
             return
@@ -537,6 +542,35 @@ class MissionPlanner:
             logger.info(f"Error occurred in MissionPlanner -> advance_phase(), error: {e}")
             raise e
 
+
+    
+    def _execute_depth_transition(self, target_position: Waypoint):
+        try:
+            logger.info(f"MissionPlanner() -> execute_depth_transition(): STARTS")
+
+            meta = {"error": ErrorType.EXECUTION_ERROR, "current location": self.navigator.current_position}
+            alert_type = AlertType.DESCEND_FAIL if self.phase == MissionPhase.DESCEND else AlertType.ASCEND_FAIL
+            notif_type = NotificationType.MACHINE_DESCENDED if self.phase == MissionPhase.DESCEND else NotificationType.MACHINE_ASCENDED
+
+            is_reached = self.simulate_step_forward(target_position= target_position)
+            if not is_reached:
+                self.notifier.raise_alert(alert_type= alert_type, message= alert_type.value, metadata = meta)
+                self.phase = MissionPhase.ABORT
+                self.abort_mission()
+
+            self.notifier.raise_notification(notification_type= notif_type, message= notif_type.value, metadata= meta)
+            
+            # Log intermediate motion steps, in `mission_telemetry_log.csv` file                                        # refer ACTION_NOTES.md(12)
+            self.telemetry_logger.log_fish_machine_telemetry(delta= self.get_telemetry_for_non_exposed_phases())
+            
+            logger.info(f"MissionPlanner() -> execute_depth_transition(): ENDS, Depth transition is successful")
+            return
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in MissionPlanner -> execute_depth_transition(), error: {e}")
+            raise e
+        
 
 
     def _get_manual_help(self):
@@ -560,4 +594,3 @@ class MissionPlanner:
         except Exception as e:
             logger.info(f"Error occurred in MissionPlanner -> get_manual_help(), error: {e}")
             raise e
-    

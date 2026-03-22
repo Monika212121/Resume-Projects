@@ -308,3 +308,16 @@ Depth is treated as a mission-level attribute, not a perception property.
 - Then action_intent = None and I take target_track_id = (-1)
 
 - This is to avoid returning a feedback with track_id = None. A feedback, in any test case, must be valid.
+
+
+12.) Mission phases are divided into 2 categories based on project architecture.
+
+- I have exposed some mission phases, to the Fly module in the whole iteration(Fish -> Fly module) of this project.
+- But I didn't exposed/passed some intermediate phases.
+- So I couldn't logged them in mision_telemetry log, which I needed in `mission intelligence` tab in UI.
+- Now I am logging telemetry data, isnide the Action Pipleine(MissionPlanner class).
+
+```
+Non-exposed phases: UNLOADING / DESCEND / ASCEND / RETURN_HQ / ABORT in action feedback to the main pipeline. 
+Exposed phases: SURFACE / UNDERWATER / DONE 
+```
