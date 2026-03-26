@@ -90,7 +90,7 @@ class ObjectCSVLogger:
             raise e
 
 
-
+    # Not using this fucniton now
     def log_lost_object(self, lost_objects: List[TrackedGarbage]):
         try:
             logger.info(f"ObjectCSVLogger -> log_lost_object(): STARTS, lost_objects: {lost_objects}")
@@ -100,6 +100,8 @@ class ObjectCSVLogger:
                 if obj.track_id in self.logged_ids:
                     logger.info(f"log_lost_object(): **********************SKIPPED")
                     continue
+
+                # If target is ignored due to low score but safe, tehy it will log when it will be selected, so avoid logging them
 
                 # Determining decision result
                 decision_status = DecisionStatus.TARGET_IGNORED

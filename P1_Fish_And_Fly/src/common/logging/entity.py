@@ -17,5 +17,5 @@ class ObjectLogEntry:
 
 @dataclass
 class CoverageArea:
-    surface_percentge: float
+    surface_percentage: float
     underwater_percentage: float

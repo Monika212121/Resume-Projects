@@ -7,9 +7,9 @@ from src.common.config.configuration import ConfigurationManager
 from src.common.alerts_and_notifications.notifier import AlertNotifier, AlertType
 
 from src.fly.stage1_action.entity import FishStatus
-from src.fly.stage1_action.coverage_tracker import CoverageTracker
 from src.fly.stage1_action.flight_controller import FlightController
 from src.fly.stage1_action.heartbeat_monitor import HeartbeatMonitor
+from src.fly.stage1_action.fish_tracker import LawnMowerCoverageTracker
 
 
 
@@ -27,7 +27,7 @@ class FlyPipeline:
 
         self.notifier = AlertNotifier()
         self.result_logger = OutcomeLogger(log_file_paths= self.log_file_paths)
-        self.coverage_tracker = CoverageTracker(grid_size= 100)
+        self.coverage_tracker = LawnMowerCoverageTracker()
 
 
 

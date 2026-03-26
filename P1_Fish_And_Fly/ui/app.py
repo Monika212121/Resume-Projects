@@ -8,7 +8,7 @@ from ui.repo.telemetry_repo import load_telemetry
 from ui.tabs.home import render_home
 from ui.tabs.mission_intelligence import render_mission_intelligence
 from ui.tabs.waste_analytics import render_waste
-from ui.tabs.ai_decisions import render_ai
+from ui.tabs.ai_decisions import render_decisions_ai
 from ui.tabs.fish_health import render_health
 
 from src.common.config.configuration import ConfigurationManager
@@ -122,7 +122,7 @@ with tabs[2]:
     render_waste(objects_df)
 
 with tabs[3]:
-    render_ai(objects_df)
+    render_decisions_ai(objects_df)
 
 with tabs[4]:
     render_health(telemetry_df)
