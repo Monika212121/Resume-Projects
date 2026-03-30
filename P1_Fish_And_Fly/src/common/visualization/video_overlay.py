@@ -3,8 +3,9 @@
 
 import cv2                                 
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
+from src.fish.stage1_vision.entity import TrackedGarbage
 from src.common.projection.entity import FishFrameObject
 from src.common.visualization.entity import VisualizationEntity, VisualObject
 
@@ -27,18 +28,11 @@ class GarbageVideoOverlay:
         Draw all visual objects and selection highlight.
         """
 
-        # 1. Draw all objects (WHITE)
+        # Draw all active objects
         for obj in viz_entity.objects:
             frame = self._draw_box(frame, obj)
 
-        # 2. Draw selected object, highlight (ORANGE)
-        if viz_entity.selected_id:
-            frame = self._draw_selected(frame, viz_entity)
-
-        # 3. Draw grasp threshold line (BLUE)
-        #frame = self._draw_grasp_threshold(frame = frame, threshold_distance = self.threshold_distance)
-
-        # 4. Draw coords(rel_x, rel_y) w.r.t fish machine (YELLOW)
+        # Draw coords(rel_x, rel_y) w.r.t fish machine (YELLOW)
         if selected_object and resized_bbox:
             frame = self._draw_fish_frame_coords(frame, resized_bbox, selected_object)
 
@@ -58,31 +52,15 @@ class GarbageVideoOverlay:
         if x2 <= x1 or y2 <= y1:
             return frame
 
-        color = obj.color
-
         # Bounding box
-        cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
+        cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), obj.color, 2)
 
         # Label text
         label = f" {obj.id} | {obj.label} | {obj.confidence:.2f} | {obj.status}"
 
-        cv2.putText(frame, label, (int(x1), max(int(y1) - 7, 15)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+        cv2.putText(frame, label, (int(x1), max(int(y1) - 7, 15)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, obj.color, 1, cv2.LINE_AA)
         return frame
 
-
-    def _draw_selected(self, frame: np.ndarray, viz_state: VisualizationEntity):
-        """
-        Draw thicker highlight for selected object
-        """
-
-        for obj in viz_state.objects:
-            if obj.id == viz_state.selected_id:
-                x1, y1, x2, y2 = obj.bbox
-
-                cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 255),  3)         # Yellow highlight
-                break
-
-        return frame
 
 
     def _draw_grasp_threshold(self, frame: np.ndarray, threshold_distance: float) -> np.ndarray:

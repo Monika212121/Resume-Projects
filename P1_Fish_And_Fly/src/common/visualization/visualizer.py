@@ -9,56 +9,75 @@ from src.common.visualization.adapter import VisualizationAdapter
 from src.common.visualization.video_overlay import GarbageVideoOverlay
 from src.common.projection.convert_camera_to_fish_frame import CameraToFishFrameProjector
 
-from src.fish.stage1_vision.entity import TrackedGarbage
-
+from src.fish.stage1_vision.entity import IOConfig, TrackedGarbage
+from src.fish.stage1_vision.io.video_writer import VideoWriterManager 
 
 
 class Visualizer:
-    def __init__(self):
-        self.FRAME_WIDTH = 640
-        self.FRAME_HEIGHT = 480
-        self.SRC_WIDTH = 1920
-        self.SRC_HEIGHT = 1080   
+    def __init__(self, io_config: IOConfig):
+        self.io_config = io_config
+        self.screen_dim = self.io_config.screen_dimensions
+
+        self.SOURCE_WIDTH = self.screen_dim.source_width
+        self.SOURCE_HEIGHT = self.screen_dim.source_height
+        self.DISPLAY_FRAME_WIDTH = self.screen_dim.display_width
+        self.DISPLAY_FRAME_HEIGHT = self.screen_dim.display_height
 
         self.viz_state: VisualizationEntity
 
         self.overlay_obj = GarbageVideoOverlay()
-        self.viz_adapter = VisualizationAdapter(src_width= self.SRC_WIDTH, src_height= self.SRC_HEIGHT, dst_width= self.FRAME_WIDTH, dst_height= self.FRAME_HEIGHT)
-        self.projector = CameraToFishFrameProjector(image_width= self.SRC_WIDTH, image_height= self.SRC_HEIGHT)
+        self.viz_adapter = VisualizationAdapter(src_width= self.SOURCE_WIDTH, src_height= self.SOURCE_HEIGHT, dsp_width= self.DISPLAY_FRAME_WIDTH, dsp_height= self.DISPLAY_FRAME_HEIGHT)
+        self.projector = CameraToFishFrameProjector(image_width= self.SOURCE_WIDTH, image_height= self.SOURCE_HEIGHT)
+
+        self.video_writer = VideoWriterManager(fps=15) if self.io_config.record_output else None
 
 
 
-    def visualize_objects(self, frame: np.ndarray, active_objects: List[TrackedGarbage], selected_obj: Optional[FishFrameObject]) -> None:
+    def visualize_objects(
+            self, 
+            frame: np.ndarray,
+            all_objects: List[FishFrameObject],
+            selected_obj: Optional[FishFrameObject], 
+            collected_objects: List[TrackedGarbage], 
+            lost_objects: List[TrackedGarbage]
+        ) -> Optional[VideoWriterManager]:
         """
         Visualize tracked objects, selection, grasp threshold and world projection.
         """
         try:
-            logger.info(f"Visualizer -> visualize_objects(): STARTS, active_objects: {active_objects}, selected_obj: {selected_obj}")
+            logger.info(f"Visualizer -> visualize_objects(): STARTS, all_objects: {all_objects}, selected_obj: {selected_obj}")
 
             # 1. Resize original frame to desired dimension
-            frame = cv2.resize(frame, (self.FRAME_WIDTH, self.FRAME_HEIGHT))
+            frame = cv2.resize(frame, (self.DISPLAY_FRAME_WIDTH, self.DISPLAY_FRAME_HEIGHT))
             display_frame = frame.copy()
-
+            
             # Return the normal resized frame if there is no active object
-            if len(active_objects)==0:
-                logger.info("Visualizer -> visualize_objects(): ENDS, There is no active object")
+            if len(all_objects) == 0 and len(collected_objects) == 0 and len(lost_objects) == 0:
+                logger.info("Visualizer -> visualize_objects(): ENDS, There is no tracked object in current frame")
+                cv2.imshow("Fish Module: Real-Time Aquatic Perception", display_frame)
 
-                #  Always draw grasp threshold line for consistency
-                #display_frame = self.overlay_obj._draw_grasp_threshold(frame = frame, threshold_distance = self.overlay_obj.threshold_distance)
-                cv2.imshow("My Fish machine underwater garbage tracker", display_frame)
-                return
+                # Record perception visualization video
+                if self.video_writer:
+                    self.video_writer.write(display_frame)
+
+                return self.video_writer
 
             # 2. Build visualization entities (ALL objects)
             selected_track_id = selected_obj.track_id if selected_obj else None
-            viz_entity = self.viz_adapter.build(active_objects= active_objects, selected_track_id = selected_track_id)
+            viz_entity = self.viz_adapter.build_visual_entity(
+                all_objects= all_objects, 
+                selected_track_id= selected_track_id, 
+                collected_objects= collected_objects,
+                lost_objects= lost_objects
+            )
 
             # 3. Resize Bounding box of the selected object.
             resized_bbox = None
             if selected_obj:
                 x1, y1, x2, y2 = selected_obj.original_bbox
 
-                scale_x = self.FRAME_WIDTH / self.SRC_WIDTH
-                scale_y = self.FRAME_HEIGHT / self.SRC_HEIGHT
+                scale_x = self.DISPLAY_FRAME_WIDTH / self.SOURCE_WIDTH
+                scale_y = self.DISPLAY_FRAME_HEIGHT / self.SOURCE_HEIGHT
 
                 resized_bbox = (int(x1 * scale_x), int(y1 * scale_y), int(x2 * scale_x), int(y2 * scale_y))
 
@@ -66,10 +85,14 @@ class Visualizer:
             display_frame = self.overlay_obj.draw(frame= display_frame, viz_entity= viz_entity, resized_bbox= resized_bbox, selected_object= selected_obj)
 
             # 5. Show frame
-            cv2.imshow("My Fish machine underwater garbage tracker", display_frame)
+            cv2.imshow("Fish Module: Real-Time Aquatic Perception", display_frame)
+
+            # Record perception visulization video
+            if self.video_writer:
+                self.video_writer.write(display_frame)
 
             logger.info(f"Visualizer -> visualize_objects(): ENDS")
-            return
+            return self.video_writer
         
 
         except Exception as e:

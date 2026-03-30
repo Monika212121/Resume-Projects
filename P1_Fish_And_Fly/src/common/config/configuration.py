@@ -327,9 +327,12 @@ class ConfigurationManager():
     # 4. SIMULATION CONFIGURATIONS
 
     def get_simulation_config(self) -> SimulationConfig:
+        cfg = self._config[self.machine].simulation
+
         simulation_config = SimulationConfig(
             visualization= self.get_simulation_visualization_config(),
             spawning= self.get_spawn_config(),
+            grasp_threshold= cfg.grasp_threshold
         )
 
         return simulation_config

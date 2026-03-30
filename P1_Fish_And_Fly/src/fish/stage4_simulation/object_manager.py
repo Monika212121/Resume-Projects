@@ -13,7 +13,7 @@ from src.fish.stage3_action.entity import Waypoint, ActionStatus
 from src.fish.stage4_simulation.entity import Metadata, Visual
 from src.fish.stage4_simulation.clamper import clamp_position
 from src.fish.stage4_simulation.object_factory import create_body
-from src.fish.stage4_simulation.constants import SIM_GARBAGE_SPAWN_OFFSET_X
+from src.fish.stage4_simulation.constants import SIM_GARBAGE_SPAWN_OFFSET_X, SPAWN_X_FACTOR, SPAWN_Y_FACTOR
 
 
 
@@ -116,8 +116,8 @@ class ObjectManager():
             fish_curr_dir = self.fish_navigation_info.direction
 
             rel_obj_pos_world_frame = Waypoint(                                                             # refer SIMULATION_NOTES.md()
-                x= rel_obj_pos_fish_frame.y * 100,
-                y= rel_obj_pos_fish_frame.x * 5 * -1 * fish_curr_dir,
+                x= rel_obj_pos_fish_frame.y * SPAWN_X_FACTOR,
+                y= rel_obj_pos_fish_frame.x * SPAWN_Y_FACTOR * fish_curr_dir,
                 z= 0
             )
 

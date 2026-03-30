@@ -2,8 +2,8 @@ from typing import List, Dict, Tuple, Set
 
 from src.common.logging import logger
 
-from src.fish.stage1_vision.entity import AggregationConfig, Detection, TrackedGarbage, TrackedState
-from src.fish.stage2_decision.entity import LifeCycleCommand, LifeCycleAction
+from src.fish.stage1_vision.entity import AggregationConfig, Detection, TrackedGarbage, TrackedState, EntityRole
+from src.fish.stage2_decision.entity import CategorizedObjects, LifeCycleCommand, LifeCycleAction
 
 
 
@@ -20,9 +20,10 @@ class GarbageAggregator:
         self.memory: Dict[int, TrackedGarbage] = {}                             # lifecycle memory
         self.done_ids: Set[int] = set()                                         # list of ids of DONE/FAILED/LOST objects
 
+        self.collected_objects: List[TrackedGarbage] = []                       # to display collected objects in perception visualization
 
     
-    def create_garbage_aggregations(self, detections: List[Detection]) -> Tuple[List[TrackedGarbage], List[TrackedGarbage]]:
+    def create_garbage_aggregations(self, detections: List[Detection]) -> Tuple[List[TrackedGarbage], List[TrackedGarbage], List[TrackedGarbage]]:
         """
         Create garbage aggregations from raw object detections, received from YOLO.
 
@@ -82,6 +83,7 @@ class GarbageAggregator:
         logger.info(f"create_garbage_aggregations(): , tracked_objects= {len(self.memory)}")
 
         # --------------------------------------Handle missing objects--------------------------------
+
         lost_objects: List[TrackedGarbage] = []
 
         for track_id, tracked_object in list(self.memory.items()):
@@ -94,18 +96,19 @@ class GarbageAggregator:
             # State transformation: [any state -> LOST]
             if object_idle_frame > self.max_idle_frames:
                 # Mark the object's state to LOST
-                if tracked_object.state != TrackedState.DONE:                       # the object is not collected yet.
+                if tracked_object.state != TrackedState.COLLECTED:                       # the object is not collected yet.
                     tracked_object.state = TrackedState.LOST
                     logger.info(f"marked lost: track_id: {track_id}")
                     lost_objects.append(tracked_object)
         
+
         # ----------------Cleanup of DONE and LOST objects-------
         #self._cleanup_memory()                 # Not required
 
         # Taking only active objects from the memory.
-        active_objects = [obj for obj in self.memory.values() if obj.state not in (TrackedState.DONE, TrackedState.LOST)]
+        active_objects = [obj for obj in self.memory.values() if obj.state not in (TrackedState.COLLECTED, TrackedState.LOST)]
 
-        logger.info(f"GarbageAggregator -> create_garbage_aggregations() -> active objects: {len(active_objects)}, lost objects: {len(lost_objects)}, total objects in agg: {len(self.memory)}")
+        logger.info(f"GarbageAggregator -> create_garbage_aggregations() -> active objects: {len(active_objects)}, total objects in agg: {len(self.memory)}")
 
         for obj in self.memory.values():
             logger.info(
@@ -116,7 +119,7 @@ class GarbageAggregator:
             )
 
         logger.info("GarbageAggregator -> create_garbage_aggregations(): ENDS")
-        return (active_objects, lost_objects)
+        return active_objects, self.collected_objects, lost_objects
 
 
     def apply_lifecycle_changes(self, command: LifeCycleCommand) -> bool:
@@ -149,13 +152,16 @@ class GarbageAggregator:
 
         # Updating Aggregation memory with the selected object's Lifecycle status.
         if command.action == LifeCycleAction.SELECT:
-            selected_object.state = TrackedState.SELECTED                           # automatically updated in aggregation memory(pass by reference)
+            selected_object.state = TrackedState.SELECTED       # automatically updated in aggregation memory(pass by reference)
 
         elif command.action == LifeCycleAction.DONE:
-            selected_object.state = TrackedState.DONE
+            selected_object.state = TrackedState.COLLECTED
 
             # Updating done_ids list.
             self.done_ids.add(target_track_id)
+
+            # Updating collected object's list                  # architecture allows any object to be collected and marked only once, so no need for checking unique item
+            self.collected_objects.append(selected_object)
 
         elif command.action == LifeCycleAction.FAILED:
             selected_object.state = TrackedState.LOST
@@ -165,7 +171,10 @@ class GarbageAggregator:
 
         elif command.action == LifeCycleAction.UNATTEMPTED:
             selected_object.state = TrackedState.UNATTEMPTED
-            
+
+        elif command.action == LifeCycleAction.AVOIDED:
+            selected_object.state = TrackedState.AVOIDED
+
         
         logger.info(f"track_id: {target_track_id} set to: {selected_object.state}")
             
@@ -175,17 +184,35 @@ class GarbageAggregator:
         return True
 
 
-    # NOT USED YET.
-    def get_done_object_ids(self) -> Set[int]:
-        """
-        Docstring for get_done_object_ids
+    def apply_lifecycle_changes_for_non_selectable_objects(self, categorized_objects: CategorizedObjects) -> bool:
+        try:
+            logger.info(f"GarbageAggregator -> for_non_selectable_objects(): STARTS, categorized_objects: {categorized_objects}")
+
+            # Updating Aggregation memory with the non-selectable objects[Unsafe targets + Env + Hazard] Lifecycle status
+            for obj in categorized_objects.collection_targets:
+                saved_obj = self.memory[obj.track_id]
+                if obj.priority_score <= 0:
+                    logger.info(f"TARGET AVOIDED NEAR HAZARD status marked")
+                    saved_obj.state = TrackedState.AVOIDED
+
+            for obj in categorized_objects.environment_entities:
+                saved_obj = self.memory[obj.track_id]
+                logger.info(f"IGNORED status marked")
+                saved_obj.state = TrackedState.IGNORED
+
+            for obj in categorized_objects.navigation_hazards:
+                saved_obj = self.memory[obj.track_id]
+                logger.info("AVOIDED status marked")
+                saved_obj.state = TrackedState.AVOIDED
+                
+            # NOTE: No need to update the aggregation memory with selected object's state (NO NEED FOR `self.memory[track_id] = selected_object`) 
+            # Because `Objects in Python are passed by reference, not by value`.
+            logger.info(f"GarbageAggregator -> for_non_selectable_objects(): ENDS")
+            return True
         
-        :param self: Belongs to GarbageAggregator class
-        :return: Provides list of ids of all the objects which are either DONE/LOST.
-        :rtype: Set[int]
-        """
-        logger.info(f"GarbageAggregator -> get_done_object_ids(): done_ids: {self.done_ids}")
-        return self.done_ids
+        
+        except Exception as e:
+            raise e
 
 
 

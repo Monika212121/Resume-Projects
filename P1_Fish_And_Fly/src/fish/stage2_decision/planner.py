@@ -23,7 +23,7 @@ class ActionPlanner:
 
             action_intent: Optional[ActionIntent] = None
             if len(safe_ranked_objects) == 0 or locked_target_id is None:
-                logger.info(f"ActionPlanner -> build_action_intent(), There are no safe ranked object")
+                logger.info(f"ActionPlanner -> build_action_intent(), There is no selected / locked object. No action intent can be build.")
                 return action_intent
 
             # Creating an action intent, for the selected safe target object

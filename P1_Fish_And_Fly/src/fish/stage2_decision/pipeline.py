@@ -92,19 +92,16 @@ class DecisionPipeline:
 
             # Target selection, selects and locks 1 target
             selection_commands, selected_target = self.selector.select_target(safe_target_objects= safe_target_objects)       # refer DECISION_NOTES.md(4)
-            if len(selection_commands) == 0 or selected_target is None:
-                logger.info(f"DecisionPipeline-> run(): No selection command is generated and No selected object")
-                return decision_result
             
             # Action planning
-            action_intent = self.planner.build_action_intent(safe_ranked_objects = safe_target_objects, locked_target_id = selected_target.track_id)
+            action_intent = self.planner.build_action_intent(safe_ranked_objects = safe_target_objects, locked_target_id = selected_target.track_id if selected_target else None)
 
             # Assigning Decision Status and priority_score to collection targets only 
             updated_collection_targets = self.categorizer.assign_decision_status_for_target_objects(
                 all_target_objects = categorized_objects.collection_targets, 
                 safe_targets = safe_target_objects,
                 unsafe_targets = unsafe_target_objects, 
-                selected_track_id = selected_target.track_id
+                selected_track_id = selected_target.track_id if selected_target else None
             )
 
             # Updating categorized objects with the updated collection targets

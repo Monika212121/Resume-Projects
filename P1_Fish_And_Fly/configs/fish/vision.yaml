@@ -6,11 +6,17 @@ visualization:
 
 
 io:
-  source: folder_video                                       # camera | video | sim | folder_video          # refer VISION_NOTES.md(5)
+  source: folder_video                                       # camera | video | sim | folder_video, refer VISION_NOTES.md(5)
+  screen_dimensions:
+    source_width: 1920
+    source_height: 1080
+    display_width: 640
+    display_height: 480
+  record_output: true                                       # toggle enabling inference video recording
   camera: 
     device_id: 0
   video:
-    path: dataset/test_footage_split                                                                        # refer dataset/NOTE.md(4)
+    path: dataset/test_footage_split                         # refer dataset/NOTE.md(4)
 
 
 class_names:

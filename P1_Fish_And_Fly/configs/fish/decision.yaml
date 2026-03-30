@@ -21,7 +21,7 @@ rule_filter:
     - turtle
 
 reasoner:
-  hazard_radius: 0.0
+  hazard_radius: 1.0
  
 
 priority:

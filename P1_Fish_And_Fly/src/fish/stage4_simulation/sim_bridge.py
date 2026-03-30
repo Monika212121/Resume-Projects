@@ -14,17 +14,19 @@ from src.fish.stage4_simulation.robot_controller import RobotController
 
 
 class SimulationBridge:
-    def __init__(self, simulation_cfg: SimulationConfig, garbage_dump: DumpLocation):
-        self.ENABLE_SIM_GUI = simulation_cfg.visualization.enabled_gui
-        self.spawn_visual_config = simulation_cfg.spawning.visual
-        #self.spawn_zone_config = simulation_cfg.spawning.zone                                              # not used now (might be used later)
+    def __init__(self, simulation_config: SimulationConfig, garbage_dump: DumpLocation):
+        self.simulation_cfg = simulation_config
+
+        self.ENABLE_SIM_GUI = self.simulation_cfg.visualization.enabled_gui
+        self.spawn_visual_config = self.simulation_cfg.spawning.visual
+        #self.spawn_zone_config = self.simulation_cfg.spawning.zone                                              # not used now (might be used later)
 
         self.world = PyBulletWorld(garbage_dump_location = garbage_dump)
         self.robot_controller = RobotController()
         self.object_manager = ObjectManager(visual_config = self.spawn_visual_config)
 
         self.simulation_started = False
-        self.grasp_threshold: float = 2.0
+        self.grasp_threshold: float = self.simulation_cfg.grasp_threshold
 
 
 

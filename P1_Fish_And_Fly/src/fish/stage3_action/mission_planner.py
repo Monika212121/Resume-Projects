@@ -50,7 +50,7 @@ class MissionPlanner:
             garbage_dump= self.dump_location_cfg,
             depths = self.mission_cfg.depths
         )
-        self.sim_bridge = SimulationBridge(simulation_cfg = simulation_config, garbage_dump = self.dump_location_cfg)                                                                # Connection to PyBullet Simulation
+        self.sim_bridge = SimulationBridge(simulation_config = simulation_config, garbage_dump = self.dump_location_cfg)                                                                # Connection to PyBullet Simulation
 
         self.phase: MissionPhase = MissionPhase.SURFACE
         self.depths: Depths = self.mission_cfg.depths                                                            # Mission state initiated

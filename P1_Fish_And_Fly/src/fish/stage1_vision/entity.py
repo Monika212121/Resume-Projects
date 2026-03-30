@@ -20,9 +20,20 @@ class CameraConfig:
 class VideoConfig:
     path: Path
 
+
+@dataclass
+class ScreenDimensions:
+    source_width: int
+    source_height: int
+    display_width: int
+    display_height: int
+
+
 @dataclass
 class IOConfig:
     source: str                                                 # "camera" | "video" | "sim"
+    screen_dimensions: ScreenDimensions
+    record_output: bool                                        # toggle enabling inference video recording
     camera: Optional[CameraConfig] = None
     video: Optional[VideoConfig] = None
 
@@ -130,9 +141,11 @@ class TrackedState(Enum):
     NEW = "new"
     STABLE = "stable"
     SELECTED = "selected"
-    DONE = "done"
+    COLLECTED = "collected"
     LOST = "lost"
     UNATTEMPTED = "unattempted"
+    IGNORED = "ignored"
+    AVOIDED = "avoided"
 
 
 # This object representing a tracked item, used outside Vision module 
