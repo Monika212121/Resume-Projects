@@ -61,3 +61,4 @@ class SpawningConfig:
 class SimulationConfig:
     visualization: SimulationVisualization
     spawning: SpawningConfig
+    grasp_threshold: int

@@ -70,7 +70,8 @@ class Categorizer:
             for obj in ranked_target_objects:
 
                 # Case1: UNSAFE: When hazard object is near to this target object
-                if obj.priority_score < 0:                                                                    # refer DECISION_NOTES.md(3)                                   
+                if obj.priority_score <= 0:   
+                    obj.decision_status = DecisionStatus.TARGET_AVOIDED                                                                 # refer DECISION_NOTES.md(3)                                   
                     unsafe_target_objects.append(obj)
                 
                 # Case2: SAFE: When hazard object is not near to this target
@@ -89,7 +90,7 @@ class Categorizer:
 
     def assign_decision_status_for_target_objects(self, all_target_objects: List[FishFrameObject], safe_targets: List[FishFrameObject], unsafe_targets: List[FishFrameObject], selected_track_id: Optional[int]) -> List[FishFrameObject]:
         try:
-            logger.info(f"Categorizer -> assign_decision_status_for_target_objects(): STARTS")
+            logger.info(f"Categorizer -> assign_decision_status_for_target_objects(): STARTS, SAFE: {safe_targets}, UNSAFE: {unsafe_targets}, SEL_ID: {selected_track_id}")
             
             # Creating a dict of {track_id, priority_score}
             id_score_dict: Dict[int, float] = {}

@@ -30,6 +30,7 @@ class LifeCycleAction(Enum):
    LOST = "lost"
    FAILED = "failed"
    UNATTEMPTED = "unattempted"
+   AVOIDED = "avoid intentionally"
 
 
 @dataclass

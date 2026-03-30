@@ -3,8 +3,8 @@
 import cv2
 
 from src.common.logging import logger
-from src.common.logging import telemetry_csv_logger
 from src.common.utils.mission import action_is_allowed
+from src.common.utils.objects import get_all_tracked_objects
 from src.common.entity.heartbeat import SystemHeartbeat
 from src.common.visualization.visualizer import Visualizer
 from src.common.config.configuration import ConfigurationManager
@@ -37,7 +37,7 @@ class FishPipeline:
         self.decision_pipeline_obj = DecisionPipeline(decision_config = self.decision_config)
         self.mission_planner_obj = MissionPlanner(action_config = self.action_config, simulation_config= self.simulation_config, telemetry_logger = self.result_logger.telemetry_logger)
         self.fish_frame_projector_obj = FishFrameProjector()
-        self.visualization_obj = Visualizer()
+        self.visualization_obj = Visualizer(io_config= self.vision_config.io)
 
 
 
@@ -68,6 +68,10 @@ class FishPipeline:
             # Stop consuming the visual feed
             self.vision_input.stop()
             cv2.destroyAllWindows()
+
+            # Stop recording the perception visualization
+            if self.video_writer:
+                self.video_writer.release()
 
             logger.info(f"FishPipeline -> terminate(): ENDS")
             return
@@ -110,7 +114,7 @@ class FishPipeline:
             #logger.info(f"Original frame shape: {frame.shape}")
 
             # PERCEPTION | VISION: Creating aggregated tracked objects(in Vision Aggregator)
-            active_objects, lost_objects = self.vision_pipeline_obj.run(frame)
+            active_objects, collected_objects, lost_objects = self.vision_pipeline_obj.run(frame)
 
             # PROJECTION: Transforming image frame(active_objects) -> fish frame(fish_frame_objects)
             fish_frame_objects = self.fish_frame_projector_obj.transform_to_fish_frame(active_objects= active_objects)
@@ -126,7 +130,15 @@ class FishPipeline:
 
             # VISUALIZATION: Viewing the tracked objects, in actual video/camera feed. 
             if self.vision_config.visualization.enabled_gui:
-                self.visualization_obj.visualize_objects(frame = frame, active_objects= active_objects, selected_obj= selected_target)
+                all_active_objects = get_all_tracked_objects(active_objects= fish_frame_objects, categorized_objects= categorized_objects)
+
+                self.video_writer = self.visualization_obj.visualize_objects(
+                    frame = frame, 
+                    all_objects= all_active_objects, 
+                    selected_obj= selected_target, 
+                    collected_objects = collected_objects, 
+                    lost_objects= lost_objects
+                )
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):                                                        # Exit when 'q' is pressed
                     # If perception visualization is not interupted, then abort the mission
@@ -140,8 +152,8 @@ class FishPipeline:
                     return heartbeat
 
             
-            # Logging lost objects(which lost before getting selected)
-            self.result_logger.object_logger.log_lost_object(lost_objects = lost_objects)
+            # Updating lifecycle states for non-selectable objects[Unsafe targets + Env + Hazard]
+            self.vision_pipeline_obj.aggregator.apply_lifecycle_changes_for_non_selectable_objects(categorized_objects= categorized_objects)
 
             # Logging non-selectable objects[Unsafe targets + Env + Hazard]
             self.result_logger.object_logger.log_non_selectable_objects(categorized_objects= categorized_objects)

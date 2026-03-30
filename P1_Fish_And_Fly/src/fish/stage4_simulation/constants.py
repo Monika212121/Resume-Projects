@@ -14,14 +14,15 @@ WORKSPACE_BOUNDS = {
 }
 
 
-SIM_GARBAGE_SPAWN_OFFSET_X = 8.0  # meters, forward in Fish heading
-
+SIM_GARBAGE_SPAWN_OFFSET_X = 8.0           # distance forward Fish machine, a garbage is spawned
+SPAWN_X_FACTOR = 100                       # Y_rel = distance of BB in fish world = distance of object(x-axis) in sim frame. Y_rel is very small value(eg: 0.0065).  
+SPAWN_Y_FACTOR = -1                        # X_rel = offset of object(left/right) in fish frame = distance of object(negative y-axis) in sim frame, that's why multiplied by -1.
 
 SLOW_TELEPORT_PHASES = {
     MissionPhase.ABORT,
     MissionPhase.FAILED,
     MissionPhase.UNLOADING,
-    MissionPhase.RETURN_HQ,             # RETURN_HQ is normal traversal but the reason I kept it in slow traversal is to avoid clamping of destination as HQ can be anywhere
+    MissionPhase.RETURN_HQ,                # RETURN_HQ is normal traversal but the reason I kept it in slow traversal is to avoid clamping of destination as HQ can be anywhere
     MissionPhase.DESCEND,
     MissionPhase.ASCEND
 }

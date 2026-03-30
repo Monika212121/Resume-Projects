@@ -50,7 +50,7 @@ class VisionPipeline:
     
 
 
-    def run(self, frame) -> Tuple[List[TrackedGarbage], List[TrackedGarbage]]:
+    def run(self, frame) -> Tuple[List[TrackedGarbage], List[TrackedGarbage], List[TrackedGarbage]]:
         try:
             logger.info("VisionPipeline-> run(): STARTS")
 
@@ -93,10 +93,10 @@ class VisionPipeline:
 
 
             # Creating tracked objects aggregation, from the list of detections. 
-            active_aggregations, lost_aggregations = self.aggregator.create_garbage_aggregations(detections = detection_list)
+            active_objects, collected_object, lost_objects = self.aggregator.create_garbage_aggregations(detections = detection_list)
             
             logger.info("VisionPipeline-> run(): ENDS")
-            return (active_aggregations, lost_aggregations)                                              
+            return active_objects, collected_object, lost_objects                                              
 
 
         except Exception as e:

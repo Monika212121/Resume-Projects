@@ -6,6 +6,7 @@ visualization:
   enabled_gui: true
 
 
+
 spawning:
 
   visual:
@@ -52,7 +53,6 @@ spawning:
         count: 3
 
 
-
   zones:
 
     targets:
@@ -72,3 +72,7 @@ spawning:
       y_range: [-6, 6]
       z: 0
       min_distance: 1.5
+
+
+
+grasp_threshold: 3.0

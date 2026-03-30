@@ -33,8 +33,10 @@ class Filter:
             logger.info(f"Filter -> filter_by_stability_rules(): STARTS, before filtering n(objects): {len(fish_frame_objects)}")
 
             # NOTE: If an object is UNATTEMPTED, it means that its already beeen considered, it means it was stable
-            # Object lifecycle = NEW -> STABLE -> UNATTEMPTED -> DONE | FAILED | LOST
-            stable_fish_frame_objects = [obj for obj in fish_frame_objects.values() if obj.state in [TrackedState.STABLE, TrackedState.UNATTEMPTED]]
+            # Object lifecycle = NEW -> STABLE -> UNATTEMPTED -> DONE | FAILED | LOST | AVOIDED | IGNORED
+            allowed_phases = [TrackedState.STABLE, TrackedState.SELECTED, TrackedState.UNATTEMPTED, TrackedState.AVOIDED, TrackedState.IGNORED]
+
+            stable_fish_frame_objects = [obj for obj in fish_frame_objects.values() if obj.state in allowed_phases]
 
             logger.info(f"Filter -> filter_by_stability_rules(): ENDS, after filtering n(objects): {len(stable_fish_frame_objects)}")
             return stable_fish_frame_objects
