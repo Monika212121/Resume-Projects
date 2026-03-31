@@ -7,8 +7,7 @@ from src.common.entity.decision_types import DecisionStatus
 from src.common.projection.entity import FishFrameObject
 from src.common.visualization.colors import STATUS_COLORS
 from src.common.visualization.entity import VisualizationEntity, VisualObject
-
-from src.fish.stage1_vision.entity import EntityRole, TrackedGarbage, TrackedState
+from src.common.vision.entity import EntityRole, TrackedObject, TrackedState
 
 
 
@@ -33,7 +32,7 @@ class VisualizationAdapter:
         self.max_display_count = 5
 
 
-    def build_visual_entity(self, all_objects: List[FishFrameObject], selected_track_id: Optional[int], collected_objects: List[TrackedGarbage], lost_objects: List[TrackedGarbage]) -> VisualizationEntity:
+    def build_visual_entity(self, all_objects: List[FishFrameObject], selected_track_id: Optional[int], collected_objects: List[TrackedObject], lost_objects: List[TrackedObject]) -> VisualizationEntity:
 
         visuals: List[VisualObject] = []
 

@@ -3,39 +3,14 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 
+from src.common.io.entity import IOConfig
+
 
 
 # Visualization object
 @dataclass
 class PerceptionVisualization:
     enabled_gui: bool
-
-
-# IO configuration objects
-@dataclass
-class CameraConfig:
-    device_id: int
-
-@dataclass
-class VideoConfig:
-    path: Path
-
-
-@dataclass
-class ScreenDimensions:
-    source_width: int
-    source_height: int
-    display_width: int
-    display_height: int
-
-
-@dataclass
-class IOConfig:
-    source: str                                                 # "camera" | "video" | "sim"
-    screen_dimensions: ScreenDimensions
-    record_output: bool                                        # toggle enabling inference video recording
-    camera: Optional[CameraConfig] = None
-    video: Optional[VideoConfig] = None
 
 
 # Model training configuration objects
@@ -62,6 +37,7 @@ class ModelParameter:
     translate: Optional[float] = 0.0
     scale: Optional[float] = 0.0
 
+
 @dataclass
 class YOLOModelTrainerConfig:
    model_name: str
@@ -86,25 +62,20 @@ class InferenceConfig:
     verbose: bool
 
 
-# Aggregation configuration object
-@dataclass
-class AggregationConfig:
-    max_history: int
-    stable_age: int                                             # Number of frames an object is seen
-    max_idle_frames: int
-
-
-
-# -----------------------------
-# Main Vision Config
-# -----------------------------
-
 # This object displays Semantic behaviour category
 @dataclass
 class Categories:
     collection_targets: List[str]
     environmental_entities: List[str]
     navigation_hazards: List[str]
+
+
+# Aggregation configuration object
+@dataclass
+class AggregationConfig:
+    max_history: int
+    stable_age: int                                             # Number of frames an object is seen
+    max_idle_frames: int
 
 
 @dataclass
@@ -115,8 +86,8 @@ class VisionConfig:
     training: YOLOModelTrainerConfig
     inference: InferenceConfig
     tracking: TrackingConfig
-    aggregation: AggregationConfig
     categories: Categories
+    aggregation: Optional[AggregationConfig] = None
 
 
 # This is enum, maintaing semantic entity categorization
@@ -136,6 +107,7 @@ class Detection:
     track_id: Optional[int] = None
     entity_role: EntityRole = EntityRole.ENVIRONMENT_ENTITY
 
+
 # This is enum, maintaining lifecycle state of an object
 class TrackedState(Enum):
     NEW = "new"
@@ -150,7 +122,7 @@ class TrackedState(Enum):
 
 # This object representing a tracked item, used outside Vision module 
 @dataclass
-class TrackedGarbage:
+class TrackedObject:
     track_id: int
     class_id: int
     class_name: str

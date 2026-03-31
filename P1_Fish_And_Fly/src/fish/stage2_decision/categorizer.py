@@ -3,8 +3,7 @@ from typing import Tuple, List, Optional, Dict
 from src.common.logging import logger
 from src.common.projection.entity import FishFrameObject
 from src.common.entity.decision_types import DecisionStatus
-
-from src.fish.stage1_vision.entity import EntityRole
+from src.common.vision.entity import EntityRole
 
 from src.fish.stage2_decision.entity import CategorizedObjects
 

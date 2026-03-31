@@ -1,13 +1,13 @@
 from typing import List, Dict, Tuple, Set
 
 from src.common.logging import logger
+from src.common.vision.entity import Detection, TrackedObject, TrackedState, AggregationConfig
 
-from src.fish.stage1_vision.entity import AggregationConfig, Detection, TrackedGarbage, TrackedState, EntityRole
 from src.fish.stage2_decision.entity import CategorizedObjects, LifeCycleCommand, LifeCycleAction
 
 
 
-class GarbageAggregator:
+class ObjectAggregator:
     """
     Aggregates detections over time using track_id
     """
@@ -17,13 +17,14 @@ class GarbageAggregator:
         self.max_idle_frames: int = aggregator_cfg.max_idle_frames
 
         self.frame_count: int = 0
-        self.memory: Dict[int, TrackedGarbage] = {}                             # lifecycle memory
+        self.memory: Dict[int, TrackedObject] = {}                             # lifecycle memory
         self.done_ids: Set[int] = set()                                         # list of ids of DONE/FAILED/LOST objects
 
-        self.collected_objects: List[TrackedGarbage] = []                       # to display collected objects in perception visualization
+        self.collected_objects: List[TrackedObject] = []                       # to display collected objects in perception visualization
+
 
     
-    def create_garbage_aggregations(self, detections: List[Detection]) -> Tuple[List[TrackedGarbage], List[TrackedGarbage], List[TrackedGarbage]]:
+    def create_garbage_aggregations(self, detections: List[Detection]) -> Tuple[List[TrackedObject], List[TrackedObject], List[TrackedObject]]:
         """
         Create garbage aggregations from raw object detections, received from YOLO.
 
@@ -54,7 +55,7 @@ class GarbageAggregator:
 
             # Creating a new object
             if track_id not in self.memory:
-                tracked_object = TrackedGarbage(
+                tracked_object = TrackedObject(
                     track_id = track_id,
                     class_id = det.class_id,
                     class_name = det.class_name,
@@ -84,7 +85,7 @@ class GarbageAggregator:
 
         # --------------------------------------Handle missing objects--------------------------------
 
-        lost_objects: List[TrackedGarbage] = []
+        lost_objects: List[TrackedObject] = []
 
         for track_id, tracked_object in list(self.memory.items()):
             if track_id in active_track_ids:

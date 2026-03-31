@@ -2,14 +2,14 @@ from typing import List
 from box import ConfigBox
 from dataclasses import fields
 
+from src.common.io.entity import IOConfig
 from src.common.entity.log_file_paths import LogFilePaths
 from src.common.config.config_loader import load_machine_config
 from src.common.config.config_mapper import parse_waypoint, parse_waypoint_list
+from src.common.vision.entity import  ModelParameter, YOLOModelTrainerConfig, InferenceConfig, TrackingConfig, Categories, PerceptionVisualization, AggregationConfig, VisionConfig
 
 from src.fly.stage1_action.entity import MonitorConfig
 from src.fly.stage1_action.entity import FlightControllerConfig
-
-from src.fish.stage1_vision.entity import PerceptionVisualization, IOConfig, ModelParameter, YOLOModelTrainerConfig, InferenceConfig, TrackingConfig, AggregationConfig, Categories, VisionConfig
 from src.fish.stage2_decision.entity import RuleFilterConfig, PriorityReasonerConfig, DecisionConfig
 from src.fish.stage3_action.entity import ActionConfig, Mission, Bin, Navigation, CostWeights, VehicleModel, NormalizationLimits, CostModel, DumpLocation
 from src.fish.stage4_simulation.entity import SimulationVisualization, SimulationConfig, SpawningConfig, SpawnObject, Visual, SpawnZone

@@ -3,8 +3,7 @@
 from ultralytics import YOLO
 
 from src.common.logging import logger
-
-from src.fish.stage1_vision.entity import YOLOModelTrainerConfig
+from src.common.vision.entity import YOLOModelTrainerConfig
 
 
 
@@ -21,16 +20,11 @@ class ModelTrainer:
         try:
             logger.info("ModelTrainer -> train_yolo_model(): START")
 
-            # Loading the YOLO model training configurations
-            #fish_cfg_mgr = ConfigurationManager("fish")
-            #model_trainer_cfg = fish_cfg_mgr.get_training_config()
-
             model_name = self.model_trainer_cfg.model_name
             params = self.model_trainer_cfg.model_parameters
-            logger.info(f"ModelTrainer -> train_yolo_model(): MODEL NAME: {model_name}, MODEL PARAMETERS: {params}")
 
             # Loading pre-trained YOLOv8s model
-            # Here: model_name = path to model file, i.e. 'model/yolo8s.pt'. This function displays model info on load.
+            # NOTE: Here, model_name = path to model file, i.e. 'model/yolo8s.pt'. This function displays model info on load.
             model = YOLO(model_name)
 
             # Performing model training of the pre-trained YOLO model

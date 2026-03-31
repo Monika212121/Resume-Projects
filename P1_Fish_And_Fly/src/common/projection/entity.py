@@ -3,8 +3,7 @@ from typing import Tuple
 from dataclasses import dataclass
 
 from src.common.entity.decision_types import DecisionStatus
-
-from src.fish.stage1_vision.entity import TrackedState, EntityRole
+from src.common.vision.entity import TrackedState, EntityRole
 
 from src.fish.stage3_action.entity import Waypoint
 

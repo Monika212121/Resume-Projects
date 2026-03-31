@@ -2,8 +2,9 @@
 # This is PURELY CALCULATION and frame conversion [IMAGE -> FISH] FRAME
 
 from src.common.logging import logger
+from src.common.vision.entity import TrackedObject
 from src.common.projection.entity import FishFrameObject
-from src.fish.stage1_vision.entity import TrackedGarbage
+
 from src.fish.stage3_action.entity import Waypoint
 
 
@@ -27,7 +28,7 @@ class CameraToFishFrameProjector:
 
     
     
-    def project_image_to_fish_frame(self, tracked_obj: TrackedGarbage) -> FishFrameObject:
+    def project_image_to_fish_frame(self, tracked_obj: TrackedObject) -> FishFrameObject:
         """
         Project a bounding box into fish robot-centric coordinates.
 

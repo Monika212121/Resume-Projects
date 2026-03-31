@@ -9,8 +9,8 @@ from src.common.logging.entity import ObjectLogEntry
 from src.common.projection.entity import FishFrameObject
 from src.common.entity.decision_types import DecisionStatus
 from src.common.logging.object_csv_logger import ObjectLogEntry
+from src.common.vision.entity import TrackedObject, EntityRole
 
-from src.fish.stage1_vision.entity import TrackedGarbage, EntityRole
 from src.fish.stage2_decision.entity import CategorizedObjects, LifeCycleAction, LifeCycleCommand
 from src.fish.stage3_action.entity import ActionStatus
 
@@ -91,7 +91,7 @@ class ObjectCSVLogger:
 
 
     # Not using this fucniton now
-    def log_lost_object(self, lost_objects: List[TrackedGarbage]):
+    def log_lost_object(self, lost_objects: List[TrackedObject]):
         try:
             logger.info(f"ObjectCSVLogger -> log_lost_object(): STARTS, lost_objects: {lost_objects}")
                                                                                                                                          

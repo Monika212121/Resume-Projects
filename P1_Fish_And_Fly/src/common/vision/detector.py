@@ -1,12 +1,13 @@
 # YOLO + classifier detection for underwater garbage
 from ultralytics import YOLO
 
-from src.fish.stage1_vision.entity import InferenceConfig
+from src.common.vision.entity import InferenceConfig
 
 
-class GarbageDetector:
+
+class ObjectDetector:
     """
-    YOLO based Garbage Detector
+    YOLO based Object Detector
     Detector just owns YOLO model, whereas Tracker decided Inference mode.
     """
     def __init__(self, cfg: InferenceConfig):

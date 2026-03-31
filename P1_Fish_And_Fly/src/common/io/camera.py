@@ -1,6 +1,7 @@
 import cv2
 from src.common.logging import logger
-from src.fish.stage1_vision.io.base import VisionInput
+from src.common.io.base import VisionInput
+
 
 
 class CameraInput(VisionInput):

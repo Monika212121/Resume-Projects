@@ -1,14 +1,12 @@
 # Aim: Project camera detections (image frame) into a robot-centric 2D world frame.
 # This is an APPROXIMATION.
 
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict
 
 from src.common.logging import logger
+from src.common.vision.entity import TrackedObject
 from src.common.projection.entity import FishFrameObject
 from src.common.projection.convert_camera_to_fish_frame import CameraToFishFrameProjector
-
-from src.fish.stage1_vision.entity import TrackedGarbage
-from src.fish.stage2_decision.entity import ActionIntent
 
 
 
@@ -23,7 +21,7 @@ class FishFrameProjector:
 
 
 
-    def transform_to_fish_frame(self, active_objects: List[TrackedGarbage]) -> Dict[int, FishFrameObject]:
+    def transform_to_fish_frame(self, active_objects: List[TrackedObject]) -> Dict[int, FishFrameObject]:
         """
         Transforms active_objects(image_frame) to fish_frame_objects(fish frame).
 

@@ -3,14 +3,15 @@ import numpy as np
 from typing import List, Optional
 
 from src.common.logging import logger
+from src.common.io.entity import IOConfig
+from src.common.io.video_writer import VideoWriterManager 
 from src.common.projection.entity import FishFrameObject
 from src.common.visualization.entity import VisualizationEntity
 from src.common.visualization.adapter import VisualizationAdapter
 from src.common.visualization.video_overlay import GarbageVideoOverlay
 from src.common.projection.convert_camera_to_fish_frame import CameraToFishFrameProjector
+from src.common.vision.entity import TrackedObject
 
-from src.fish.stage1_vision.entity import IOConfig, TrackedGarbage
-from src.fish.stage1_vision.io.video_writer import VideoWriterManager 
 
 
 class Visualizer:
@@ -38,8 +39,8 @@ class Visualizer:
             frame: np.ndarray,
             all_objects: List[FishFrameObject],
             selected_obj: Optional[FishFrameObject], 
-            collected_objects: List[TrackedGarbage], 
-            lost_objects: List[TrackedGarbage]
+            collected_objects: List[TrackedObject], 
+            lost_objects: List[TrackedObject]
         ) -> Optional[VideoWriterManager]:
         """
         Visualize tracked objects, selection, grasp threshold and world projection.

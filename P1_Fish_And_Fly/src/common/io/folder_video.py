@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import List
 
 from src.common.logging import logger
-from src.fish.stage1_vision.io.base import VisionInput
+from src.common.io.base import VisionInput
+
 
 
 class FolderVideoInput(VisionInput):

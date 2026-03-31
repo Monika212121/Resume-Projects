@@ -2,10 +2,10 @@
 
 from src.common.logging import logger
 
-from src.fish.stage1_vision.entity import IOConfig
-from src.fish.stage1_vision.io.video import VideoInput
-from src.fish.stage1_vision.io.camera import CameraInput
-from src.fish.stage1_vision.io.folder_video import FolderVideoInput
+from src.common.io.entity import IOConfig
+from src.common.io.video import VideoInput
+from src.common.io.camera import CameraInput
+from src.common.io.folder_video import FolderVideoInput
 
 
 # Returns the Vision Input object, after detecting the source of visual feed (CAMERA/ VIDEO/ SIMULATION).

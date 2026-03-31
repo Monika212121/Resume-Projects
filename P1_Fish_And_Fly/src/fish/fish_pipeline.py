@@ -3,17 +3,17 @@
 import cv2
 
 from src.common.logging import logger
+from src.common.logging.result_logger import OutcomeLogger
+from src.common.config.configuration import ConfigurationManager
+from src.common.io.factory import build_vision_input
+from src.common.io.folder_video import FolderVideoInput
 from src.common.utils.mission import action_is_allowed
 from src.common.utils.objects import get_all_tracked_objects
-from src.common.entity.heartbeat import SystemHeartbeat
 from src.common.visualization.visualizer import Visualizer
-from src.common.config.configuration import ConfigurationManager
 from src.common.projection.fish_frame_projection import FishFrameProjector
-from src.common.logging.result_logger import OutcomeLogger
+from src.common.entity.heartbeat import SystemHeartbeat
 
 from src.fish.stage1_vision.pipeline import VisionPipeline
-from src.fish.stage1_vision.io.factory import build_vision_input
-from src.fish.stage1_vision.io.folder_video import FolderVideoInput
 from src.fish.stage2_decision.pipeline import DecisionPipeline
 from src.fish.stage2_decision.entity import LifeCycleAction, LifeCycleCommand
 from src.fish.stage3_action.entity import MissionPhase
@@ -23,13 +23,14 @@ from src.fish.stage3_action.mission_planner import MissionPlanner
     
 class FishPipeline:
     def __init__(self, fish_cfg_mg: ConfigurationManager):
+        self.cfg_mg = fish_cfg_mg
 
         # Loading the Fish's configurations
-        self.log_file_paths = fish_cfg_mg.get_log_file_paths()
-        self.vision_config = fish_cfg_mg.get_vision_config()
-        self.decision_config = fish_cfg_mg.get_decision_config()
-        self.action_config = fish_cfg_mg.get_action_config()
-        self.simulation_config = fish_cfg_mg.get_simulation_config() 
+        self.log_file_paths = self.cfg_mg.get_log_file_paths()
+        self.vision_config = self.cfg_mg.get_vision_config()
+        self.decision_config = self.cfg_mg.get_decision_config()
+        self.action_config = self.cfg_mg.get_action_config()
+        self.simulation_config = self.cfg_mg.get_simulation_config() 
 
         # Instantiating the pipelines
         self.result_logger = OutcomeLogger(log_file_paths = self.log_file_paths)

@@ -1,6 +1,7 @@
 import cv2
 from src.common.logging import logger
-from src.fish.stage1_vision.io.base import VisionInput
+from src.common.io.base import VisionInput
+
 
 
 class VideoInput(VisionInput):
@@ -19,7 +20,7 @@ class VideoInput(VisionInput):
         
 
     def read(self):        
-        ret, frame = self.cap.read()
+        ret, frame = self.cap.read()                            # type: ignore
         if not ret:
             return None
         
