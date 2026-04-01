@@ -1,4 +1,4 @@
-# This file contains configurations for the Fish decision logic configurations
+# This file contains Decision configurations for the Manatee module
 
 rule_filter:
   min_age: 5

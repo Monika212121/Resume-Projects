@@ -1,4 +1,4 @@
-# This file contains Vision configurations for the Manatee module
+# This file contains Vision configurations for the Fish module
 # Models used: YOLOv8s
 
 visualization:                                               # `record_output` toggle in 'io' config can be triggered, only when this toggle is ON
