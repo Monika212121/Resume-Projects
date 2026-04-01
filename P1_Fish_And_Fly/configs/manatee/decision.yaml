@@ -1,0 +1,36 @@
+# This file contains configurations for the Fish decision logic configurations
+
+rule_filter:
+  min_age: 5
+  min_conf: 0.4
+  allowed_classes:
+    - algae_bloom
+    - big_rock
+    - crab
+    - dangerous_animal
+    - fish
+    - fishing_net
+    - fishing_rope
+    - glass_bottle
+    - human
+    - jellyfish
+    - metal_can
+    - plastic_bag
+    - plastic_bottle
+    - starfish
+    - turtle
+
+reasoner:
+  hazard_radius: 1.0
+ 
+
+priority:
+  class_weights:
+    plastic : 3.0
+    metal: 2.5
+    rubber: 2.0
+    cloth: 1.5
+    other: 1.0
+
+selection:
+  lock_enabled: true

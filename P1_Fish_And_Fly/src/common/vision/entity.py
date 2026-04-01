@@ -83,10 +83,10 @@ class VisionConfig:
     visualization: PerceptionVisualization
     io: IOConfig
     class_names: List[str]
-    training: YOLOModelTrainerConfig
-    inference: InferenceConfig
-    tracking: TrackingConfig
     categories: Categories
+    training: Optional[YOLOModelTrainerConfig] = None           # Model training is only done by Fish machine, so there is no use to pass this, in other machine's configuration
+    inference: Optional[InferenceConfig] = None
+    tracking: Optional[TrackingConfig] = None                 
     aggregation: Optional[AggregationConfig] = None
 
 

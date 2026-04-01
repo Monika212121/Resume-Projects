@@ -4,6 +4,8 @@ from enum import Enum
 from typing import List
 from dataclasses import dataclass
 
+from src.common.entity.dump_points import DumpLocation
+
 
 
 class ActionStatus(Enum):
@@ -110,11 +112,6 @@ class CostModel:
     cost_weigths: CostWeights
     vehicle_model: VehicleModel
     normalization_limits: NormalizationLimits
-
-
-@dataclass
-class DumpLocation:
-    d_points: List[Waypoint]        # Coordinates of the points where unloading of dustbin takes place
 
 
 @dataclass(frozen= True)
