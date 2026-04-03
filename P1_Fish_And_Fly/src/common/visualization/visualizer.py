@@ -4,13 +4,12 @@ from typing import List, Optional
 
 from src.common.logging import logger
 from src.common.io.entity import IOConfig
-from src.common.io.video_writer import VideoWriterManager 
+from src.common.vision.entity import TrackedObject
 from src.common.projection.entity import FishFrameObject
 from src.common.visualization.entity import VisualizationEntity
 from src.common.visualization.adapter import VisualizationAdapter
 from src.common.visualization.video_overlay import GarbageVideoOverlay
 from src.common.projection.convert_camera_to_fish_frame import CameraToFishFrameProjector
-from src.common.vision.entity import TrackedObject
 
 
 
@@ -30,8 +29,6 @@ class Visualizer:
         self.viz_adapter = VisualizationAdapter(src_width= self.SOURCE_WIDTH, src_height= self.SOURCE_HEIGHT, dsp_width= self.DISPLAY_FRAME_WIDTH, dsp_height= self.DISPLAY_FRAME_HEIGHT)
         self.projector = CameraToFishFrameProjector(image_width= self.SOURCE_WIDTH, image_height= self.SOURCE_HEIGHT)
 
-        self.video_writer = VideoWriterManager(fps=15) if self.io_config.record_output else None
-
 
 
     def visualize_objects(
@@ -41,7 +38,7 @@ class Visualizer:
             selected_obj: Optional[FishFrameObject], 
             collected_objects: List[TrackedObject], 
             lost_objects: List[TrackedObject]
-        ) -> Optional[VideoWriterManager]:
+        ) -> np.ndarray:
         """
         Visualize tracked objects, selection, grasp threshold and world projection.
         """
@@ -56,12 +53,7 @@ class Visualizer:
             if len(all_objects) == 0 and len(collected_objects) == 0 and len(lost_objects) == 0:
                 logger.info("Visualizer -> visualize_objects(): ENDS, There is no tracked object in current frame")
                 cv2.imshow("Fish Module: Real-Time Aquatic Perception", display_frame)
-
-                # Record perception visualization video
-                if self.video_writer:
-                    self.video_writer.write(display_frame)
-
-                return self.video_writer
+                return display_frame
 
             # 2. Build visualization entities (ALL objects)
             selected_track_id = selected_obj.track_id if selected_obj else None
@@ -88,12 +80,8 @@ class Visualizer:
             # 5. Show frame
             cv2.imshow("Fish Module: Real-Time Aquatic Perception", display_frame)
 
-            # Record perception visulization video
-            if self.video_writer:
-                self.video_writer.write(display_frame)
-
             logger.info(f"Visualizer -> visualize_objects(): ENDS")
-            return self.video_writer
+            return display_frame
         
 
         except Exception as e:

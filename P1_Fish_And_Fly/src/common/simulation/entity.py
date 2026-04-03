@@ -60,5 +60,6 @@ class SpawningConfig:
 @dataclass
 class SimulationConfig:
     visualization: SimulationVisualization
+    record_output: bool
     spawning: SpawningConfig
     grasp_threshold: int

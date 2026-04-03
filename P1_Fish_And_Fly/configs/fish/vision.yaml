@@ -2,7 +2,7 @@
 # Models used: YOLOv8s
 
 visualization:                                               # `record_output` toggle in 'io' config can be triggered, only when this toggle is ON
-  enabled_gui: true
+  enabled_gui: false
 
 
 io:

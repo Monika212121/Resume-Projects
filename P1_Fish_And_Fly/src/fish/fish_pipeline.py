@@ -4,21 +4,21 @@ import cv2
 
 from src.common.logging import logger
 from src.common.logging.result_logger import OutcomeLogger
-from src.common.config.configuration import ConfigurationManager
 from src.common.io.factory import build_vision_input
 from src.common.io.folder_video import FolderVideoInput
+from src.common.io.video_writer import VideoWriterManager 
 from src.common.utils.mission import action_is_allowed
 from src.common.utils.objects import get_all_tracked_objects
 from src.common.visualization.visualizer import Visualizer
-from src.common.projection.fish_frame_projection import FishFrameProjector
 from src.common.entity.heartbeat import SystemHeartbeat
+from src.common.config.configuration import ConfigurationManager
+from src.common.projection.fish_frame_projection import FishFrameProjector
 
 from src.fish.stage1_vision.pipeline import VisionPipeline
 from src.fish.stage2_decision.pipeline import DecisionPipeline
 from src.fish.stage2_decision.entity import LifeCycleAction, LifeCycleCommand
 from src.fish.stage3_action.entity import MissionPhase
 from src.fish.stage3_action.mission_planner import MissionPlanner
-
 
     
 class FishPipeline:
@@ -39,6 +39,8 @@ class FishPipeline:
         self.mission_planner_obj = MissionPlanner(action_config = self.action_config, simulation_config= self.simulation_config, telemetry_logger = self.result_logger.telemetry_logger)
         self.fish_frame_projector_obj = FishFrameProjector()
         self.visualization_obj = Visualizer(io_config= self.vision_config.io)
+        self.video_writer = VideoWriterManager(output_dir= "outputs/fish", fps= 20) if self.vision_config.io.record_output else None
+        self.recording_enabled = self.vision_config.visualization.enabled_gui
 
 
 
@@ -73,6 +75,10 @@ class FishPipeline:
             # Stop recording the perception visualization
             if self.video_writer:
                 self.video_writer.release()
+
+            # Stop recording the simulation visualization
+            if self.mission_planner_obj.sim_bridge.world.recorder:
+                self.mission_planner_obj.sim_bridge.stop()
 
             logger.info(f"FishPipeline -> terminate(): ENDS")
             return
@@ -133,13 +139,17 @@ class FishPipeline:
             if self.vision_config.visualization.enabled_gui:
                 all_active_objects = get_all_tracked_objects(active_objects= fish_frame_objects, categorized_objects= categorized_objects)
 
-                self.video_writer = self.visualization_obj.visualize_objects(
+                display_frame = self.visualization_obj.visualize_objects(
                     frame = frame, 
                     all_objects= all_active_objects, 
                     selected_obj= selected_target, 
                     collected_objects = collected_objects, 
                     lost_objects= lost_objects
                 )
+
+                # Record perception video
+                if self.video_writer:
+                    self.video_writer.write(display_frame)
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):                                                        # Exit when 'q' is pressed
                     # If perception visualization is not interupted, then abort the mission

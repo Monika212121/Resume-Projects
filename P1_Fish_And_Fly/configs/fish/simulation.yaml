@@ -6,6 +6,8 @@ visualization:
   enabled_gui: true
 
 
+record_output: false                       # enabling Simulation video recording. To unlock this feature, `enabled_gui` in Visualization config must be `true`
+
 
 spawning:
 

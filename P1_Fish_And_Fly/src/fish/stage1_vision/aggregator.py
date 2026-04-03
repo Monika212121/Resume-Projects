@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple, Set
 
 from src.common.logging import logger
-from src.common.vision.entity import Detection, TrackedObject, TrackedState, AggregationConfig
+from src.common.vision.entity import Detection, TrackedObject, TrackedState, AggregationConfig, EntityRole
 
 from src.fish.stage2_decision.entity import CategorizedObjects, LifeCycleCommand, LifeCycleAction
 
@@ -52,7 +52,14 @@ class ObjectAggregator:
             track_id: int = det.track_id
             det_bbox: Tuple[int, int, int, int] = tuple(det.bbox)
             active_track_ids.add(track_id)                                          # to keep track of active objects
+            '''
+            '''
+            if track_id == 1:
+                det.class_id = 1
+                det.class_name = "big_rock"
+                det.entity_role = EntityRole.NAVIGATION_HAZARD
 
+            
             # Creating a new object
             if track_id not in self.memory:
                 tracked_object = TrackedObject(

@@ -2,8 +2,7 @@ import pybullet as p
 from typing import Tuple, Optional
 
 from src.common.logging import logger
-
-from src.fish.stage4_simulation.entity import SpawnObject
+from src.common.simulation.entity import SpawnObject
 
 SHAPE_MAP = {
     "sphere": p.GEOM_SPHERE,

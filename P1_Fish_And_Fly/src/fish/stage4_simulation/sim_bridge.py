@@ -3,13 +3,13 @@ import pybullet as p
 from src.common.logging import logger
 from src.common.utils.mission import get_target_distance
 from src.common.entity.fish_machine_info import FishNavigationInfo
+from src.common.simulation.entity import SimulationConfig
+from src.common.simulation.object_manager import ObjectManager
+from src.common.simulation.pybullet_world import PyBulletWorld
+from src.common.simulation.robot_controller import RobotController
 
 from src.fish.stage2_decision.entity import CategorizedObjects
 from src.fish.stage3_action.entity import Waypoint, DumpLocation, MissionPhase
-from src.fish.stage4_simulation.entity import SimulationConfig
-from src.fish.stage4_simulation.object_manager import ObjectManager
-from src.fish.stage4_simulation.pybullet_world import PyBulletWorld
-from src.fish.stage4_simulation.robot_controller import RobotController
 
 
 
@@ -27,6 +27,7 @@ class SimulationBridge:
 
         self.simulation_started = False
         self.grasp_threshold: float = self.simulation_cfg.grasp_threshold
+        self.recording_enabled: bool = self.simulation_cfg.record_output
 
 
 
@@ -55,6 +56,25 @@ class SimulationBridge:
 
 
 
+    def stop(self):
+        try:
+            # Disconnect to Pybullet 
+            if self.simulation_started:
+                self.world.shutdown()
+
+            # Release the simulation recorder
+            self.world.recorder.stop()
+
+            # Mark the simulation flag as stopped
+            self.simulation_started = False
+            return
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in SimulationBridge -> stop(), error: {e}")
+            raise e
+
+
     def step(self, pose: Waypoint, curr_mission_phase: MissionPhase):
         try:
             # Traverse Fish robot to the given position
@@ -76,6 +96,10 @@ class SimulationBridge:
 
             # Updating hazard blinking
             self.object_manager.update_hazard_blinking()
+
+            # Record the Simulation visualization
+            if self.recording_enabled:
+                self.world.recorder.record(target = pose)
 
             return
         

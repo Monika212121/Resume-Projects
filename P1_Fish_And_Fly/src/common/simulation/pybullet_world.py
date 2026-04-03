@@ -3,11 +3,13 @@ import pybullet_data
 from typing import List, Tuple
 
 from src.common.logging import logger
+from src.common.entity.position import Waypoint
+from src.common.simulation.entity import SpawnObject
+from src.common.simulation.constants import WORKSPACE_BOUNDS
+from src.common.simulation.object_factory import create_body
+from src.common.simulation.sim_recorder import SimulationRecorder
 
-from src.fish.stage3_action.entity import Waypoint, DumpLocation
-from src.fish.stage4_simulation.entity import SpawnObject
-from src.fish.stage4_simulation.constants import WORKSPACE_BOUNDS
-from src.fish.stage4_simulation.object_factory import create_body
+from src.fish.stage3_action.entity import DumpLocation
 
 
 
@@ -20,6 +22,8 @@ class PyBulletWorld:
         self.physics_client_id = None
         self.dump_points: List[Waypoint] = garbage_dump_location.d_points
         self.dump_point_ids: List[int] = []
+        self.recorder = SimulationRecorder()
+
 
 
     def connect(self, enable_GUI: bool = False):

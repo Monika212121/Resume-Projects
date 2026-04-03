@@ -6,6 +6,7 @@ from src.fly.stage1_action.entity import FishStatus, StateDeltas
 from src.common.logging import logger
 from src.common.utils.mission import is_reached_target
 from src.common.projection.entity import FishFrameObject
+from src.common.simulation.entity import SimulationConfig
 from src.common.entity.fish_machine_info import FishNavigationInfo
 from src.common.logging.telemetry_csv_logger import TelemetryCSVLogger
 from src.common.alerts_and_notifications.notifier import AlertNotifier
@@ -18,7 +19,6 @@ from src.fish.stage3_action.manipulator import Manipulator
 from src.fish.stage3_action.navigation import PathNavigator
 from src.fish.stage3_action.unload_behavior import UnloadGarbageBehavior
 from src.fish.stage3_action.entity import ActionConfig, MissionPhase, Depths, MissionCheckpoint, ActionStatus, ActionFeedback, Waypoint
-from src.fish.stage4_simulation.entity import SimulationConfig
 from src.fish.stage4_simulation.sim_bridge import SimulationBridge
 
 

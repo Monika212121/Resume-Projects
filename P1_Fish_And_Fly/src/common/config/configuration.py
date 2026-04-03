@@ -7,12 +7,12 @@ from src.common.entity.log_file_paths import LogFilePaths
 from src.common.config.config_loader import load_machine_config
 from src.common.config.config_mapper import parse_waypoint, parse_waypoint_list
 from src.common.vision.entity import  ModelParameter, YOLOModelTrainerConfig, InferenceConfig, TrackingConfig, Categories, PerceptionVisualization, AggregationConfig, VisionConfig
+from src.common.simulation.entity import SimulationVisualization, SimulationConfig, SpawningConfig, SpawnObject, Visual, SpawnZone
 
 from src.fly.stage1_action.entity import MonitorConfig
 from src.fly.stage1_action.entity import FlightControllerConfig
 from src.fish.stage2_decision.entity import RuleFilterConfig, PriorityReasonerConfig, DecisionConfig
 from src.fish.stage3_action.entity import ActionConfig, Mission, Bin, Navigation, CostWeights, VehicleModel, NormalizationLimits, CostModel, DumpLocation
-from src.fish.stage4_simulation.entity import SimulationVisualization, SimulationConfig, SpawningConfig, SpawnObject, Visual, SpawnZone
 
 
 
@@ -331,6 +331,7 @@ class ConfigurationManager():
 
         simulation_config = SimulationConfig(
             visualization= self.get_simulation_visualization_config(),
+            record_output= cfg.record_output,
             spawning= self.get_spawn_config(),
             grasp_threshold= cfg.grasp_threshold
         )

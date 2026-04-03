@@ -54,25 +54,30 @@ class PriorityReasoner:
         try:
             logger.info(f"PriorityReasoner -> rank_targets(): STARTS, target_objects: {target_objects}, hazard_objects: {hazard_objects}")
 
-            # Calculate priority score for all target objects
             for obj in target_objects:
 
-                # Calculate base priority score, using formula [base_score = 1 / distance of target w.r.t fish machine]
-                base_score = 1 / (obj.relative_distance + 1e-6)
+                # Normalize distance into bounded score (0 to 1)
+                # Closer object → score close to 1
+                base_score = 1 / (1 + obj.relative_distance)
 
-                # Penalize heavily in case any hazard objects is near to this target object
-                priority_score = base_score
-                hazard_is_near = self.is_hazard_near_target(target_object= obj, hazard_objects= hazard_objects)
+                # Check hazard proximity
+                hazard_is_near = self.is_hazard_near_target(
+                    target_object=obj,
+                    hazard_objects=hazard_objects
+                )
+
+                # Apply penalty safely within [-1, 1]
                 if hazard_is_near:
-                    priority_score = base_score * -1        # penalize base score
-                
-                obj.priority_score = priority_score
+                    priority_score = -base_score
+                else:
+                    priority_score = base_score
 
+                obj.priority_score = priority_score
 
             logger.info(f"PriorityReasoner -> rank_targets(): ENDS, ranked_objects: {target_objects}")
             return target_objects
 
 
         except Exception as e:
-            logger.info(f"Error occurred in PriorityReasoner -> rank_targets(), error: {e}")
-            raise e
+            logger.error(f"PriorityReasoner -> rank_targets(): ERROR: {str(e)}")
+            raise

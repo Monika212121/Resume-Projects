@@ -4,6 +4,7 @@ from enum import Enum
 from typing import List
 from dataclasses import dataclass
 
+from src.common.entity.position import Waypoint
 from src.common.entity.dump_points import DumpLocation
 
 
@@ -25,12 +26,6 @@ class ActionFeedback:
     track_id: int
     reason: str = ""
 
-
-@dataclass
-class Waypoint:
-    x: float
-    y: float
-    z: float
 
 @dataclass
 class Bin:

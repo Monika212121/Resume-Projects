@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from src.fish.stage3_action.entity import Waypoint
+from src.common.entity.position import Waypoint
 
 
 

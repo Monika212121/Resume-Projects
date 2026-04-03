@@ -4,8 +4,8 @@ from src.common.logging import logger
 from src.common.vision.train import ModelTrainer
 from src.common.vision.tracker import ObjectTracker
 from src.common.vision.detector import ObjectDetector
+from src.common.vision.entity import VisionConfig
 
-from src.fish.stage1_vision.entity import VisionConfig
 
 
 

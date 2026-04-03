@@ -84,10 +84,10 @@ class VisionConfig:
     io: IOConfig
     class_names: List[str]
     categories: Categories
-    training: Optional[YOLOModelTrainerConfig] = None           # Model training is only done by Fish machine, so there is no use to pass this, in other machine's configuration
-    inference: Optional[InferenceConfig] = None
-    tracking: Optional[TrackingConfig] = None                 
-    aggregation: Optional[AggregationConfig] = None
+    training: YOLOModelTrainerConfig           # Model training is only done by Fish machine, so there is no use to pass this, in other machine's configuration
+    inference: InferenceConfig
+    tracking: TrackingConfig               
+    aggregation: AggregationConfig
 
 
 # This is enum, maintaing semantic entity categorization

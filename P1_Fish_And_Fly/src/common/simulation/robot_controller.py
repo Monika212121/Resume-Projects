@@ -4,10 +4,10 @@ import pybullet as p
 from typing import Optional, Tuple
 
 from src.common.logging import logger
+from src.common.simulation.clamper import clamp_position
+from src.common.simulation.constants import SLOW_TELEPORT_PHASES, STOP_DELAY, TEXT_COLOR
 
 from src.fish.stage3_action.entity import Waypoint, MissionPhase
-from src.fish.stage4_simulation.clamper import clamp_position
-from src.fish.stage4_simulation.constants import SLOW_TELEPORT_PHASES, STOP_DELAY, TEXT_COLOR
 
 
 

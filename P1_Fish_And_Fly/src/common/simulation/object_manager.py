@@ -10,10 +10,10 @@ from src.common.projection.entity import FishFrameObject
 from src.common.entity.fish_machine_info import FishNavigationInfo
 
 from src.fish.stage3_action.entity import Waypoint, ActionStatus
-from src.fish.stage4_simulation.entity import Metadata, Visual
-from src.fish.stage4_simulation.clamper import clamp_position
-from src.fish.stage4_simulation.object_factory import create_body
-from src.fish.stage4_simulation.constants import SIM_GARBAGE_SPAWN_OFFSET_X, SPAWN_X_FACTOR, SPAWN_Y_FACTOR
+from src.common.simulation.entity import Metadata, Visual
+from src.common.simulation.clamper import clamp_position
+from src.common.simulation.object_factory import create_body
+from src.common.simulation.constants import SIM_GARBAGE_SPAWN_OFFSET_X, SPAWN_X_FACTOR, SPAWN_Y_FACTOR
 
 
 

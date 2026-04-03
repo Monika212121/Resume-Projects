@@ -4,7 +4,7 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import List, Optional
 
-from src.fish.stage3_action.entity import Waypoint
+from src.common.entity.position import Waypoint
 
 
 
