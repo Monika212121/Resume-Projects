@@ -30,7 +30,7 @@ class Filter:
 
     def filter_by_stability_rules(self, fish_frame_objects: Dict[int, FishFrameObject]) -> List[FishFrameObject]:
         try:
-            logger.info(f"Filter -> filter_by_stability_rules(): STARTS, before filtering n(objects): {len(fish_frame_objects)}")
+            logger.debug(f"Filter -> filter_by_stability_rules(): STARTS, before filtering n(objects): {len(fish_frame_objects)}")
 
             # NOTE: If an object is UNATTEMPTED, it means that its already beeen considered, it means it was stable
             # Object lifecycle = NEW -> STABLE -> UNATTEMPTED -> DONE | FAILED | LOST | AVOIDED | IGNORED
@@ -38,12 +38,12 @@ class Filter:
 
             stable_fish_frame_objects = [obj for obj in fish_frame_objects.values() if obj.state in allowed_phases]
 
-            logger.info(f"Filter -> filter_by_stability_rules(): ENDS, after filtering n(objects): {len(stable_fish_frame_objects)}")
+            logger.debug(f"Filter -> filter_by_stability_rules(): ENDS, after filtering n(objects): {len(stable_fish_frame_objects)}")
             return stable_fish_frame_objects
         
 
         except Exception as e:
-            logger.info(f"Error occurred in Filter -> filter_by_stability_rules(), error: {e}")
+            logger.error(f"Error occurred in Filter -> filter_by_stability_rules(), error: {e}")
             raise e
     
 
@@ -60,7 +60,7 @@ class Filter:
         :rtype: List[TrackedGarbage]
         """
         try:
-            logger.info(f"Filter -> filter_by_hard_rules(): STARTS, initial detections: {len(tracked_objects)}")
+            logger.debug(f"Filter -> filter_by_hard_rules(): STARTS, initial detections: {len(tracked_objects)}")
 
             filtered_objects: List[FishFrameObject] = []
             
@@ -82,10 +82,10 @@ class Filter:
                 # Adding the detections to the final list, which passes all the above 3 filters (rules).
                 filtered_objects.append(object)
 
-            logger.info(f"Filter -> filter_by_hard_rules(): ENDS, final filtered detections: {len(filtered_objects)}")
+            logger.debug(f"Filter -> filter_by_hard_rules(): ENDS, final filtered detections: {len(filtered_objects)}")
             return filtered_objects
 
     
         except Exception as e:
-            logger.info(f"Error occurred in Filter -> filter_by_hard_rules(), error: {e}")
+            logger.error(f"Error occurred in Filter -> filter_by_hard_rules(), error: {e}")
             raise e

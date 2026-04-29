@@ -9,7 +9,7 @@ from src.common.io.video_writer import VideoWriterManager
 
 class SimulationRecorder:
     def __init__(self):
-        self.video_writer = VideoWriterManager(output_dir="outputs/sim", fps=10)
+        self.video_writer = VideoWriterManager(output_dir_path="outputs/sim", fps=10)
         self.initialized = False
 
         # Basic camera setup (you can tweak later)

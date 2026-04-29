@@ -1,25 +1,26 @@
 import time
-from typing import Optional, Dict, Any, List
-
-from src.fly.stage1_action.entity import FishStatus, StateDeltas
+from typing import Optional, List, Tuple
 
 from src.common.logging import logger
+from src.common.utils.mission import MissionPhase
+from src.common.action.bin_manager import BinManager
 from src.common.utils.mission import is_reached_target
+from src.common.entity.machine_types import MachineType
 from src.common.projection.entity import FishFrameObject
-from src.common.simulation.entity import SimulationConfig
-from src.common.entity.fish_machine_info import FishNavigationInfo
+from src.common.simulation.sim_bridge import SimulationBridge
+from src.common.utils.path_cost_calculator import PathCostCalculator
 from src.common.logging.telemetry_csv_logger import TelemetryCSVLogger
 from src.common.alerts_and_notifications.notifier import AlertNotifier
+from src.common.entity.fish_communication import DumpEvent, FishNavigationInfo
 from src.common.alerts_and_notifications.alert_types import AlertType, ErrorType
 from src.common.alerts_and_notifications.notification_types import NotificationType
 
+from src.fly.stage3_decision.entity import DumpConfig, FishStatus, StateDeltas
+
 from src.fish.stage2_decision.entity import ActionIntent, CategorizedObjects
-from src.fish.stage3_action.bin_manager import BinManager
 from src.fish.stage3_action.manipulator import Manipulator
 from src.fish.stage3_action.navigation import PathNavigator
-from src.fish.stage3_action.unload_behavior import UnloadGarbageBehavior
-from src.fish.stage3_action.entity import ActionConfig, MissionPhase, Depths, MissionCheckpoint, ActionStatus, ActionFeedback, Waypoint
-from src.fish.stage4_simulation.sim_bridge import SimulationBridge
+from src.fish.stage3_action.entity import ActionConfig, Depths, MissionCheckpoint, ActionStatus, ActionFeedback, Waypoint
 
 
 
@@ -34,33 +35,32 @@ class MissionPlanner:
         - Resume after action feedback
 
     """
-    def __init__(self, action_config: ActionConfig, simulation_config: SimulationConfig, telemetry_logger: TelemetryCSVLogger):
-        self.mission_cfg = action_config.mission
-        self.cost_cfg = action_config.cost_model
-        self.dump_location_cfg = action_config.dump_location
+    def __init__(self, action_config: ActionConfig, telemetry_logger: TelemetryCSVLogger, dump_points: List[DumpConfig], simulation_bridge: SimulationBridge):
+        self.cfg = action_config
+
+        self.mission_cfg = self.cfg.mission
+        self.cost_cfg = self.cfg.cost_model
+        self.dump_points = dump_points
 
         self.notifier = AlertNotifier()   
         self.bin_manager = BinManager(bin_cfg= self.mission_cfg.bin_manager)
         self.navigator = PathNavigator(navigation_cfg= self.mission_cfg.navigation)
         self.manipulator = Manipulator()
-        self.garbage_unloader = UnloadGarbageBehavior(
-            cost_cfg= self.cost_cfg, 
-            notifier_obj= self.notifier, 
-            navigator_obj= self.navigator, 
-            garbage_dump= self.dump_location_cfg,
-            depths = self.mission_cfg.depths
-        )
-        self.sim_bridge = SimulationBridge(simulation_config = simulation_config, garbage_dump = self.dump_location_cfg)                                                                # Connection to PyBullet Simulation
+        self.cost_calculator = PathCostCalculator(cost_model_cfg= self.cost_cfg, dump_points = self.dump_points)
+        #self.sim_bridge = SimulationBridge(simulation_config = simulation_config, dump_points_info = self.dump_points)            # Connection to PyBullet Simulation
+        self.sim_bridge = simulation_bridge                                                                 # shared simulation
 
         self.phase: MissionPhase = MissionPhase.SURFACE
-        self.depths: Depths = self.mission_cfg.depths                                                            # Mission state initiated
+        self.depths: Depths = self.mission_cfg.depths                                                       # Mission state initiated
         self.active_target: Optional[int] = None
         self.retry_count: int = 0
         self.max_retries: int = self.mission_cfg.limits.max_operation_retries
         self.lost_target: int = 0                                                                           # No. of lost targets
         self.max_target_loss: int = self.mission_cfg.limits.max_target_loss_ignore                          # Maximum no. of targets can be lost.
+        self.step_retry_count: int = 0
+        self.max_step_retry_count: int = self.mission_cfg.limits.max_step_retry_ignore                      # Maximum no. of steps that can be lost, before asking Manatee's help        
 
-        self.navigator.set_path(depth = self.depths.surface, start_position= self.mission_cfg.start_point)  # setting first surface level path for navigation
+        self.navigator.set_path(depth = self.depths.surface, start_position= self.mission_cfg.start_point)  # Setting first surface level path for navigation
 
         # TODO: REMOVE AFTER TESTING
         self.tick_count: int = 0
@@ -68,7 +68,7 @@ class MissionPlanner:
 
 
 
-    def tick(self, action_intent: Optional[ActionIntent], selected_target: Optional[FishFrameObject], categorized_objects: CategorizedObjects) -> ActionFeedback:
+    def tick(self, action_intent: Optional[ActionIntent], selected_target: Optional[FishFrameObject], categorized_objects: CategorizedObjects, locked_dump_ids: List[int]) -> ActionFeedback:
         """
         Gate of Action pipeline. 
 
@@ -92,12 +92,14 @@ class MissionPlanner:
         """        
         try:
             logger.info(f"MissionPlanner -> tick(): STARTS, action_intent: {action_intent}, mission phase: {self.phase}")
-            feedback : ActionFeedback    
+            feedback : ActionFeedback   
+            dump_event: Optional[DumpEvent] = None
+            need_manatee_help: bool = False
 
             # NOTE: Implementing `Perception-driven Digital twin simulation`
             
             # Start Simulation
-            self.sim_bridge.start()     
+            #self.sim_bridge.start()     
 
             # Retrieve Fish machine's current navigation information(will be used in spawning)
             fish_nav_info = FishNavigationInfo(
@@ -109,6 +111,7 @@ class MissionPlanner:
             if categorized_objects:
                 self.sim_bridge.update_all_objects_spawning(cat_objects= categorized_objects, fish_navigation_info = fish_nav_info)
         
+
             # Coordinates Garbage collection, Navigation and Garbage unloading
 
             # 1. FREEZING CURRENT INFO: Saving the current mission data (for future use).
@@ -119,33 +122,21 @@ class MissionPlanner:
             )
 
             # 2. UNLOADING BIN: Check if the dustbin is full or not, in case of full, first unload the bin, then proceed to execute action.
-            if self.bin_manager.bin_is_full():
+            if self.bin_manager.is_bin_full():
                 self.phase = MissionPhase.UNLOADING
 
-                best_dump_point = self.garbage_unloader.find_best_dump_point(current_position= self.freeze_mission_data.last_position)
-                
-                # First reach the best dump-point and then return to the freezed last position, from where bin unloading started
-                is_reached_after_unload = self.execute_navigation_to(destination= best_dump_point, return_back= True)       # telemetry logged inside
-                if not is_reached_after_unload:
-                    logger.info(f"MissionPlanner -> tick(): Error occurred in unloading bin, Simulation error")
-                    self.abort_mission()
-
+                dump_event, need_manatee_help = self.unload_fish_bin(current_position= self.freeze_mission_data.last_position, locked_dump_ids = locked_dump_ids)
+                if need_manatee_help:
                     feedback = ActionFeedback(
-                        status= ActionStatus.FAILED,
-                        track_id= action_intent.track_id if action_intent else -1,                                       # track_id = -1 means there is no target object
-                        reason= "Unloading of bin is failed"
-                    ) 
+                       status= ActionStatus.FAILED,
+                       track_id= action_intent.track_id if action_intent else -1,
+                       need_manatee_help= need_manatee_help,
+                       reason= "Issue in Unloading fish bin, Simulation error",
+                       dump_event= dump_event 
+                    )
                     return feedback
 
-                logger.info(f"MissionPlanner -> tick(): Bin unloaded successfully")
-
-                # Reset bin load
-                self.bin_manager.reset_bin()
-
-                # Update garbage unloader
-                self.garbage_unloader.resolve_unload_garbage()
-
-                # Retrieve back the same phase before unloading started.
+                # Retrieve back the same phase before unloading started an continue mission.
                 self.phase = self.freeze_mission_data.last_phase
 
 
@@ -161,7 +152,7 @@ class MissionPlanner:
             # Case2: If the target is not identified / If there is no object in frame (action_intent = None)
             # Case3: If the given target is not within reach (action_intent = valid and target_is_near() = False), 
             # If both above cases, then move 1 step forward.
-            else: 
+            else:
                 target_id = action_intent.track_id if action_intent else -1                                                             # refer ACTION_NOTES.md(11)  
 
                 # NOTE: If target_id == -1, then it means no valid target is present, else it means the target is too far                         
@@ -173,7 +164,9 @@ class MissionPlanner:
                     feedback = ActionFeedback(
                         status= ActionStatus.MOVED_FORWARD,
                         track_id= target_id,
-                        reason= "Moved forward because either the given target is not in reach or there is no object in current frame"
+                        need_manatee_help= need_manatee_help,                                               # False
+                        reason= "Moved forward because either the given target is not in reach or there is no object in current frame",
+                        dump_event= dump_event
                     ) 
 
                     # Log the new position for trajectory visualization.
@@ -182,11 +175,19 @@ class MissionPlanner:
 
                 else:
                     logger.info(f"MissionPlanner -> tick(): Simulation failed, error from Simulation module")
-                    feedback = ActionFeedback(
-                        status= ActionStatus.NONE,
-                        track_id= target_id,
-                        reason= "Simulator failed in moving a step forward"
-                    )
+                    if self.step_retry_count >= self.max_step_retry_count:
+                        need_manatee_help = self.abort_mission()
+
+                        feedback = ActionFeedback(
+                            status= ActionStatus.NONE,
+                            track_id= target_id,
+                            need_manatee_help= need_manatee_help,
+                            reason= "Simulator failed in moving a step forward and retry count exceeded",
+                            dump_event= dump_event
+                        )
+                        return feedback
+
+                    self.step_retry_count += 1
 
 
             # 4. MISSION PHASE ADVANCEMENT: Mission advances to the next phase, when current phase is finished successfully.
@@ -204,7 +205,38 @@ class MissionPlanner:
 
 
 
-    def get_telemetry_for_non_exposed_phases(self) -> StateDeltas:                                          #refer ACTION_NOTES.md(12)
+    def unload_fish_bin(self, current_position: Waypoint, locked_dump_ids: List[int]) -> Tuple[Optional[DumpEvent], bool]:
+        try:
+            dump_event: Optional[DumpEvent] = None
+            need_manatee_help: bool = False
+
+            # Finding the nearest, cheapest dump point (out of 8 dump points)
+            best_dump_point = self.cost_calculator.find_best_dump_point(current_position= current_position, locked_dump_ids = locked_dump_ids)
+            
+            # First reach the best dump-point and then return to the freezed last position, from where bin unloading process started
+            is_reached_after_unload = self.execute_navigation_to(destination= best_dump_point.position, return_back= True)       # telemetry logged inside
+            if not is_reached_after_unload:
+                logger.info(f"MissionPlanner -> unload_fish_bin(): Error occurred in unloading bin, Simulation error")
+                need_manatee_help = self.abort_mission()                                                    # refer ACTION_NOTES.md(13)
+                return dump_event, need_manatee_help                                                        # o/p = None, True/False
+
+            # Creating DumpEvent after returning back to the freezed checkpoint position 
+            dump_event = DumpEvent(dump_id= best_dump_point.dump_id, load_added= self.bin_manager.current_load)
+
+            # Reset bin load
+            self.bin_manager.reset_bin()
+
+            logger.info(f"MissionPlanner -> unload_fish_bin(): Bin unloaded successfully")
+            return dump_event, need_manatee_help                                                            # o/p = value, False
+
+
+        except Exception as e:
+            logger.info(f"Error occurred in MissionPlanner -> unload_fish_bin(), error: {e}")
+            raise e
+        
+
+
+    def get_telemetry_for_non_exposed_phases(self) -> StateDeltas:                                          # refer ACTION_NOTES.md(12)
         try:
             # Non exposed Phases: ASCEND | DESCEND | ABORT | RETURN_HQ | UNLOADING
 
@@ -237,7 +269,7 @@ class MissionPlanner:
             # List of positions, fish machine travels to reach destination (used when fish machien has to return start point)
             path_waypoints: List[Waypoint] = []
 
-            # Appending the fist position of the path, (start_position = current position)
+            # Appending the fish position of the path, (start_position = current position)
             start_position = self.freeze_mission_data.last_position                     
             path_waypoints.append(start_position)
             
@@ -257,6 +289,7 @@ class MissionPlanner:
                     if not reached_up:
                         logger.info(f"MissionPlanner -> execute_navigation_to(): Error occurred in reaching the water surface level")
                         return False
+                    
                     path_waypoints.append(curr_surface_pos)
                     
                     # Log intermediate motion steps, in `mission_telemetry_log.csv` file                                        # refer ACTION_NOTES.md(12)
@@ -269,6 +302,7 @@ class MissionPlanner:
                 if not reached:
                     logger.info(f"MissionPlanner -> execute_navigation_to(): Simulation failed in reaching the HQ")
                     return False
+                
                 path_waypoints.append(next_robot_pos)
 
                 # Log intermediate motion steps, in `mission_telemetry_log.csv` file
@@ -311,7 +345,8 @@ class MissionPlanner:
 
 
 
-    def abort_mission(self):
+    def abort_mission(self) -> bool:
+        "Returns boolean to indicate whether it needs help to reach HQ or not"
         try:
             logger.info(f"MissionPlanner -> abort_mission(): STARTS, Last phase before abort: {self.phase}")
 
@@ -331,13 +366,13 @@ class MissionPlanner:
             HQ_point = self.mission_cfg.hq_point
             is_reached_HQ = self.execute_navigation_to(destination = HQ_point, return_back= False)
             if not is_reached_HQ:
-                logger.info(f"MissionPlanner -> abort_mission(): Simulation failed in reaching the HQ")
-                self._get_manual_help()
+                logger.info(f"MissionPlanner -> abort_mission(): Simulation failed in reaching the HQ, get_manatee_help: {True}")
+                return True
 
             self.notifier.raise_alert(AlertType.HARD_ABORT, "Mission aborted in middle of water body cleaning", {"last_active_checkpoint": self.freeze_mission_data})
 
-            logger.info(f"MissionPlanner -> abort_mission(): ENDS, CHECK-> POSITION MUST BE HQ: {self.navigator.current_position}")
-            return
+            logger.info(f"MissionPlanner -> abort_mission(): ENDS, CHECK-> POSITION MUST BE HQ: {self.navigator.current_position}, get_manatee_help: {False}")
+            return False
 
 
         except Exception as e:
@@ -378,8 +413,8 @@ class MissionPlanner:
                     feedback.status = ActionStatus.COLLECTED                                                # refer ACTION_NOTE.md (5)
                     feedback.reason = "Action retry is success"
 
-                # Update the bin's load by 1 collected garbage.
-                self.bin_manager.add_garbage()
+                # Update the Fish bin's load by 1 collected garbage.
+                self.bin_manager.add_garbage(load_added= 1)
 
             # Reset the active target, regardless of current target's feedback
             self.retry_count = 0
@@ -460,10 +495,10 @@ class MissionPlanner:
             # NOTE: Here, I am not passing target waypoint, I am passing the new target position (already calculated in step_forward())
             
             # Execute simulation step (teleport-based kinematic execution)
-            self.sim_bridge.step(pose= target_position, curr_mission_phase= self.phase)
+            self.sim_bridge.step(robot= MachineType.FISH, pose= target_position, curr_mission_phase= self.phase)
 
             # Read back pose from simulation (after stepping)
-            sim_curr_pose = self.sim_bridge.get_robot_pose()
+            sim_curr_pose = self.sim_bridge.get_robot_pose(robot= MachineType.FISH)
             if sim_curr_pose is None:
                 logger.info(f"MissionPlanner -> simulate_step_forward(): SIMULATION ISSUE: Current Fish machine's position cannot be retrieved from Simulation")
                 return False
@@ -476,6 +511,9 @@ class MissionPlanner:
                 logger.error("MissionPlanner -> simulate_step_forward(): "f"Simulation mismatch | sim={sim_curr_pose}, target={target_position}")
                 logger.warning(f"SIM clamp applied: target_position: {target_position} → safe_position: {sim_curr_pose}")
                 return False
+
+            # Update Fish machine state for this step
+            self.sim_bridge.robot_controller.update_robot_state(robot_name= MachineType.FISH, current_phase= self.phase, curr_mode= None)
 
             # Commit Fish machine pose, from simulation world, back to Navigation (single source of truth)
             self.navigator.current_position = sim_current_position
@@ -526,7 +564,7 @@ class MissionPlanner:
 
                 self.notifier.raise_notification(NotificationType.REACHED_HEADQUARTER, "HQ RETURN IS SUCCESS", {})
                 
-                # Log intermediate motion steps, in `mission_telemetry_log.csv` file                                            refer ACTION_NOTES.md(12)
+                # Log intermediate motion steps, in `mission_telemetry_log.csv` file                        , refer ACTION_NOTES.md(12)
                 self.telemetry_logger.log_fish_machine_telemetry(delta= self.get_telemetry_for_non_exposed_phases())
 
                 # Marking the mission as DONE, raising notification of SUCCESSFUL MISSION COMPLETION and stopping this project execution
@@ -560,7 +598,7 @@ class MissionPlanner:
 
             self.notifier.raise_notification(notification_type= notif_type, message= notif_type.value, metadata= meta)
             
-            # Log intermediate motion steps, in `mission_telemetry_log.csv` file                                        # refer ACTION_NOTES.md(12)
+            # Log intermediate motion steps, in `mission_telemetry_log.csv` file                            # refer ACTION_NOTES.md(12)
             self.telemetry_logger.log_fish_machine_telemetry(delta= self.get_telemetry_for_non_exposed_phases())
             
             logger.info(f"MissionPlanner() -> execute_depth_transition(): ENDS, Depth transition is successful")
@@ -569,28 +607,4 @@ class MissionPlanner:
 
         except Exception as e:
             logger.info(f"Error occurred in MissionPlanner -> execute_depth_transition(), error: {e}")
-            raise e
-        
-
-
-    def _get_manual_help(self):
-        try:
-            logger.info(f"MissionPlanner() -> get_manual_help(): STARTS")
-
-            meta : Dict[Any, Any] = {
-                "current time": time.time(),
-                "last location": self.navigator.current_position,
-                "current phase": self.phase
-            }
-
-            # Updating mission's phase as FAILED, as human intervention is required
-            self.phase = MissionPhase.FAILED
-
-            self.notifier.raise_alert(AlertType.MACHINE_FAILURE, "NEEDS HUMAN SUPPORT, PLEASE SEND HELP FROM THE HQ", metadata= meta)
-            logger.info(f"MissionPlanner() -> get_manual_help(): ENDS")
-            return
-        
-
-        except Exception as e:
-            logger.info(f"Error occurred in MissionPlanner -> get_manual_help(), error: {e}")
             raise e

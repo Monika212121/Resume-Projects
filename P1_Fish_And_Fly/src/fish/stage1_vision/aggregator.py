@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple, Set
 
 from src.common.logging import logger
-from src.common.vision.entity import Detection, TrackedObject, TrackedState, AggregationConfig, EntityRole
+from src.common.vision.entity import Detection, TrackedObject, TrackedState, AggregationConfig
 
 from src.fish.stage2_decision.entity import CategorizedObjects, LifeCycleCommand, LifeCycleAction
 
@@ -38,7 +38,7 @@ class ObjectAggregator:
         :return: List of Tracked Garbage aggregations, created from detections(I/P)
         :rtype: List[TrackedGarbage]
         """
-        logger.info(f"GarbageAggregator -> create_garbage_aggregations(): STARTS, initial detections: {detections}")
+        logger.debug(f"GarbageAggregator -> create_garbage_aggregations(): STARTS, initial detections: {detections}")
 
         self.frame_count += 1
 
@@ -53,11 +53,11 @@ class ObjectAggregator:
             det_bbox: Tuple[int, int, int, int] = tuple(det.bbox)
             active_track_ids.add(track_id)                                          # to keep track of active objects
             '''
-            '''
             if track_id == 1:
                 det.class_id = 1
                 det.class_name = "big_rock"
                 det.entity_role = EntityRole.NAVIGATION_HAZARD
+            '''
 
             
             # Creating a new object
@@ -88,7 +88,6 @@ class ObjectAggregator:
             if tracked_object.state == TrackedState.NEW and tracked_object.age >= self.stable_age:
                 tracked_object.state = TrackedState.STABLE
 
-        logger.info(f"create_garbage_aggregations(): , tracked_objects= {len(self.memory)}")
 
         # --------------------------------------Handle missing objects--------------------------------
 
@@ -106,7 +105,6 @@ class ObjectAggregator:
                 # Mark the object's state to LOST
                 if tracked_object.state != TrackedState.COLLECTED:                       # the object is not collected yet.
                     tracked_object.state = TrackedState.LOST
-                    logger.info(f"marked lost: track_id: {track_id}")
                     lost_objects.append(tracked_object)
         
 
@@ -116,8 +114,6 @@ class ObjectAggregator:
         # Taking only active objects from the memory.
         active_objects = [obj for obj in self.memory.values() if obj.state not in (TrackedState.COLLECTED, TrackedState.LOST)]
 
-        logger.info(f"GarbageAggregator -> create_garbage_aggregations() -> active objects: {len(active_objects)}, total objects in agg: {len(self.memory)}")
-
         for obj in self.memory.values():
             logger.info(
                 f"[TRACK {obj.track_id}], "
@@ -126,7 +122,7 @@ class ObjectAggregator:
                 f"last_seen={obj.last_seen_frame}"
             )
 
-        logger.info("GarbageAggregator -> create_garbage_aggregations(): ENDS")
+        logger.debug("GarbageAggregator -> create_garbage_aggregations(): ENDS")
         return active_objects, self.collected_objects, lost_objects
 
 
@@ -140,17 +136,17 @@ class ObjectAggregator:
         :param command: Command received from Decision module to make lifecycle state transitions in Vision module.
         :type command: LifeCycleCommand {action:LifeCycleAction, track_id: int}
         """
-        logger.info(f"GarbageAggregator -> apply_lifecycle_changes(): STARTS, command received: {command}")
+        logger.debug(f"GarbageAggregator -> apply_lifecycle_changes(): STARTS, command received: {command}")
 
         if command.track_id == -1:                                                                                          # refer ACTION_NOTES.md()
-            logger.info(f"Command is generated for an invalid object.")
+            logger.error(f"Command is generated for an invalid object.")
             return False
 
         target_track_id = command.track_id
 
         # If the selected target is not present in the aggregation memory.
         if target_track_id not in self.memory:
-            logger.info(f"Locked object is not present in the aggregation memory.")
+            logger.error(f"Locked object is not present in the aggregation memory.")
             return False
         
         # Retrieving the selected object from the aggregation memory.
@@ -182,19 +178,16 @@ class ObjectAggregator:
 
         elif command.action == LifeCycleAction.AVOIDED:
             selected_object.state = TrackedState.AVOIDED
-
-        
-        logger.info(f"track_id: {target_track_id} set to: {selected_object.state}")
             
         # NOTE: No need to update the aggregation memory with selected object's state (NO NEED FOR `self.memory[track_id] = selected_object`) 
         # Because `Objects in Python are passed by reference, not by value`.
-        logger.info(f"GarbageAggregator -> apply_lifecycle_changes(): ENDS, checking memory updation: {self.memory[target_track_id].state}")
+        logger.debug(f"GarbageAggregator -> apply_lifecycle_changes(): ENDS, checking memory updation: {self.memory[target_track_id].state}")
         return True
 
 
     def apply_lifecycle_changes_for_non_selectable_objects(self, categorized_objects: CategorizedObjects) -> bool:
         try:
-            logger.info(f"GarbageAggregator -> for_non_selectable_objects(): STARTS, categorized_objects: {categorized_objects}")
+            logger.debug(f"GarbageAggregator -> for_non_selectable_objects(): STARTS, categorized_objects: {categorized_objects}")
 
             # Updating Aggregation memory with the non-selectable objects[Unsafe targets + Env + Hazard] Lifecycle status
             for obj in categorized_objects.collection_targets:
@@ -215,11 +208,12 @@ class ObjectAggregator:
                 
             # NOTE: No need to update the aggregation memory with selected object's state (NO NEED FOR `self.memory[track_id] = selected_object`) 
             # Because `Objects in Python are passed by reference, not by value`.
-            logger.info(f"GarbageAggregator -> for_non_selectable_objects(): ENDS")
+            logger.debug(f"GarbageAggregator -> for_non_selectable_objects(): ENDS")
             return True
         
         
         except Exception as e:
+            logger.error(f"Error occurred in ObjectAggregator -> apply_lifecycle_changes_for_non_selectable_objects(), error: {e}")
             raise e
 
 

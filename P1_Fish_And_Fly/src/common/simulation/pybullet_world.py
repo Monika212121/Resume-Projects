@@ -9,18 +9,18 @@ from src.common.simulation.constants import WORKSPACE_BOUNDS
 from src.common.simulation.object_factory import create_body
 from src.common.simulation.sim_recorder import SimulationRecorder
 
-from src.fish.stage3_action.entity import DumpLocation
+from src.fly.stage3_decision.entity import DumpConfig
 
 
 
 class PyBulletWorld:
-    def __init__(self, garbage_dump_location: DumpLocation, gui: bool = True):
+    def __init__(self, dump_points_info: List[DumpConfig], gui: bool = True):
         self.gui = gui
         self.connected = False
         self.workspace_ids = []
 
         self.physics_client_id = None
-        self.dump_points: List[Waypoint] = garbage_dump_location.d_points
+        self.dump_points: List[DumpConfig] = dump_points_info
         self.dump_point_ids: List[int] = []
         self.recorder = SimulationRecorder()
 
@@ -243,7 +243,8 @@ class PyBulletWorld:
         )
 
 
-        for idx, dp in enumerate(dump_points):
+        for idx, dump_point in enumerate(dump_points):
+            dp = dump_point.position
             body_id = p.createMultiBody(
                 baseMass=0.0,                               # static
                 baseCollisionShapeIndex=collision_shape,

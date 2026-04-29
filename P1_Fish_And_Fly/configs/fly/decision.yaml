@@ -1,0 +1,11 @@
+
+
+
+monitoring:
+  timeout_sec: 300.0
+  freeze_sec: 100.0
+
+
+dms:
+  threshold: 0.85
+  cooldown: 60

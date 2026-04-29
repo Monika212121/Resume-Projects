@@ -43,7 +43,7 @@ class Visualizer:
         Visualize tracked objects, selection, grasp threshold and world projection.
         """
         try:
-            logger.info(f"Visualizer -> visualize_objects(): STARTS, all_objects: {all_objects}, selected_obj: {selected_obj}")
+            logger.debug(f"Visualizer -> visualize_objects(): STARTS, all_objects: {all_objects}, selected_obj: {selected_obj}")
 
             # 1. Resize original frame to desired dimension
             frame = cv2.resize(frame, (self.DISPLAY_FRAME_WIDTH, self.DISPLAY_FRAME_HEIGHT))
@@ -51,7 +51,7 @@ class Visualizer:
             
             # Return the normal resized frame if there is no active object
             if len(all_objects) == 0 and len(collected_objects) == 0 and len(lost_objects) == 0:
-                logger.info("Visualizer -> visualize_objects(): ENDS, There is no tracked object in current frame")
+                logger.error("Visualizer -> visualize_objects(): ENDS, There is no tracked object in current frame")
                 cv2.imshow("Fish Module: Real-Time Aquatic Perception", display_frame)
                 return display_frame
 
@@ -80,10 +80,10 @@ class Visualizer:
             # 5. Show frame
             cv2.imshow("Fish Module: Real-Time Aquatic Perception", display_frame)
 
-            logger.info(f"Visualizer -> visualize_objects(): ENDS")
+            logger.debug(f"Visualizer -> visualize_objects(): ENDS")
             return display_frame
         
 
         except Exception as e:
-            logger.info(f"Error occurred in Visualizer -> visualize_objects(), error: {e}")
+            logger.error(f"Error occurred in Visualizer -> visualize_objects(), error: {e}")
             raise e

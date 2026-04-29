@@ -1,9 +1,22 @@
 import math
 from typing import Tuple
+from enum import Enum
 
 from src.common.logging import logger
+from src.common.entity.position import Waypoint
 
-from src.fish.stage3_action.entity import MissionPhase, Waypoint
+
+
+class MissionPhase(Enum):
+    SURFACE = 1
+    DESCEND = 2
+    UNDERWATER = 3
+    ASCEND = 4
+    RETURN_HQ = 5
+    DONE = 6
+    ABORT = 7
+    FAILED = 8
+    UNLOADING = 9
 
 
 
@@ -18,7 +31,8 @@ def mission_is_active(current_mission_phase: MissionPhase) -> bool:
     except Exception as e:
         logger.info(f"Error occurred in mission_is_active(), error: {e}")
         raise e
-    
+
+
 
 def action_is_allowed(current_mission_phase: MissionPhase) -> bool:
     try:
@@ -31,6 +45,7 @@ def action_is_allowed(current_mission_phase: MissionPhase) -> bool:
     except Exception as e:
         logger.info(f"Error occurred in action_is_allowed(), error: {e}")
         raise e
+
 
 
 def is_reached_target(current_position: Waypoint, target_position: Waypoint) -> bool:
@@ -50,6 +65,7 @@ def is_reached_target(current_position: Waypoint, target_position: Waypoint) -> 
     except Exception as e:
         logger.info(f"Error occurred in is_reached_target(), error: {e}")
         raise e
+
 
 
 def get_target_distance(current_position: Tuple[float,float,float,float], target_position: Tuple[float, float, float]) -> float:

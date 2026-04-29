@@ -32,12 +32,12 @@ class SelectionLock:
         - LOST    : previously locked target disappeared
         """
         try:
-            logger.info(f"SelectionLock -> select_target(): STARTS, ranked objects: {safe_target_objects}, active_track_id: {self.active_track_id}")
+            logger.debug(f"SelectionLock -> select_target(): STARTS, ranked objects: {safe_target_objects}, active_track_id: {self.active_track_id}")
 
             selection_commands: List[LifeCycleCommand] = []
 
             if len(safe_target_objects) == 0:
-                logger.info("No safe ranked objects are present")
+                logger.error("No safe ranked objects are present")
                 return selection_commands, None
 
             # Selecting highest priority safe object
@@ -98,12 +98,12 @@ class SelectionLock:
                 self.last_priority_score = highest_priority_target.priority_score                           # maintaining last priority_score for logging LOST object
 
 
-            logger.info(f"SelectionLock -> select_target(): ENDS, SELECTION COMMANDS: {selection_commands}, selected_obj: {highest_priority_target}")
+            logger.debug(f"SelectionLock -> select_target(): ENDS, SELECTION COMMANDS: {selection_commands}, selected_obj: {highest_priority_target}")
             return selection_commands, highest_priority_target
 
 
         except Exception as e:
-            logger.info(f"Error occurred in SelectionLock -> select_target(), error: {e}")
+            logger.error(f"Error occurred in SelectionLock -> select_target(), error: {e}")
             raise e
 
 
@@ -115,7 +115,7 @@ class SelectionLock:
         :param self: Belongs to the SelectionLock class.
         """
         try:
-            logger.info(f"SelectionLock -> release_target(): STARTS, before releasing track_id = {self.active_track_id}")
+            logger.debug(f"SelectionLock -> release_target(): STARTS, before releasing track_id = {self.active_track_id}")
 
             # NOTE: Release will be triggered, when action_feedback
             # status = SUCCESS / FAILED / LOST, not when status = SELECT / UNATTEMPTED
@@ -124,12 +124,12 @@ class SelectionLock:
             # Reset selection counter  
             self.selection_counter = 1                
 
-            logger.info(f"SelectionLock -> release_target(): ENDS, after releasing track_id = {self.active_track_id}")
+            logger.debug(f"SelectionLock -> release_target(): ENDS, after releasing track_id = {self.active_track_id}")
             return
 
 
         except Exception as e:
-            logger.info(f"Error occurred in SelectionLock -> release_target(), error: {e}")
+            logger.error(f"Error occurred in SelectionLock -> release_target(), error: {e}")
             raise e     
 
 
@@ -149,7 +149,7 @@ class SelectionLock:
         :rtype: LifeCycleCommand | None
         """
         try: 
-            logger.info(f"SelectionLock -> handle_action_feedback(): STARTS, feedback status: {feedback.status}")
+            logger.debug(f"SelectionLock -> handle_action_feedback(): STARTS, feedback status: {feedback.status}")
           
             # Creating Lifcycle command for the locked object, to pass back to Vision aggregation.
 
@@ -179,17 +179,17 @@ class SelectionLock:
                     selection_count= self.selection_counter,
                     priority_score = 0.0
                 )
-                logger.info(f"SelectionLock -> handle_action_feedback(), The locked target is far from Fish machine and hence UNATTEMPTED.")
+                logger.debug(f"SelectionLock -> handle_action_feedback(), The locked target is far from Fish machine and hence UNATTEMPTED.")
 
 
             # Releasing lock after command creation.
             if feedback.status in [ActionStatus.COLLECTED, ActionStatus.FAILED]:
                 self.release_target()
 
-            logger.info(f"SelectionLock -> handle_action_feedback(): ENDS, feedback command: {feedback_command}")
+            logger.debug(f"SelectionLock -> handle_action_feedback(): ENDS, feedback command: {feedback_command}")
             return feedback_command
 
 
         except Exception as e:
-            logger.info(f"Error occurred in SelectionLock -> handle_action_feedback(), error: {e}")
+            logger.error(f"Error occurred in SelectionLock -> handle_action_feedback(), error: {e}")
             raise e

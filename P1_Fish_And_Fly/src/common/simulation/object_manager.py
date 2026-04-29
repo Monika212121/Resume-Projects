@@ -7,7 +7,7 @@ from typing import Dict, Tuple, Optional, List
 from src.common.logging import logger
 from src.common.vision.entity import EntityRole
 from src.common.projection.entity import FishFrameObject
-from src.common.entity.fish_machine_info import FishNavigationInfo
+from src.common.entity.fish_communication import FishNavigationInfo
 
 from src.fish.stage3_action.entity import Waypoint, ActionStatus
 from src.common.simulation.entity import Metadata, Visual

@@ -5,10 +5,11 @@ from datetime import datetime
 from src.common.logging import logger
 
 
+
 class VideoWriterManager:
 
-    def __init__(self, output_dir: str = "outputs", fps: int = 20):
-        self.output_dir = Path(output_dir)
+    def __init__(self, output_dir_path: Path, fps: int = 20):
+        self.output_dir = Path(output_dir_path)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.fps = fps
@@ -18,7 +19,7 @@ class VideoWriterManager:
 
     def _generate_filename(self):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return str(self.output_dir / f"fish_fly_output_{timestamp}.mp4")
+        return str(self.output_dir / f"rec_{timestamp}.mp4")
 
     def initialize(self, frame):
         h, w = frame.shape[:2]

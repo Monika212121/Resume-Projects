@@ -16,7 +16,7 @@ class Categorizer:
 
     def perform_semantic_categorization(self, eligible_objects: List[FishFrameObject]) -> CategorizedObjects:
         try:
-            logger.info(f"Categorizer -> perform_semantic_categorization(): STARTS, eligible_objects: {eligible_objects}")
+            logger.debug(f"Categorizer -> perform_semantic_categorization(): STARTS, eligible_objects: {eligible_objects}")
 
             target_list: List[FishFrameObject] = []
             environment_list: List[FishFrameObject] = []
@@ -48,19 +48,19 @@ class Categorizer:
                 navigation_hazards= hazard_list
             )
 
-            logger.info(f"Categorizer -> perform_semantic_categorization(): ENDS, categorized_list: {categorized_objects_list}")
+            logger.debug(f"Categorizer -> perform_semantic_categorization(): ENDS, categorized_list: {categorized_objects_list}")
             return categorized_objects_list
 
 
         except Exception as e:
-            logger.info(f"Error occured in Categorizer -> perform_semantic_categorization(), error: {e}")
+            logger.error(f"Error occured in Categorizer -> perform_semantic_categorization(), error: {e}")
             raise e
 
 
 
     def perform_target_categorization(self, ranked_target_objects: List[FishFrameObject]) -> Tuple[List[FishFrameObject], List[FishFrameObject]]:
         try:
-            logger.info(f"Categorizer -> perform_target_categorization(): STARTS, ranked_objects: {ranked_target_objects}")
+            logger.debug(f"Categorizer -> perform_target_categorization(): STARTS, ranked_objects: {ranked_target_objects}")
             
             safe_target_objects: List[FishFrameObject] = []
             unsafe_target_objects: List[FishFrameObject] = []
@@ -77,19 +77,19 @@ class Categorizer:
                 else:
                     safe_target_objects.append(obj)
 
-            logger.info(f"Categorizer -> perform_target_categorization(): ENDS, safe_target_objects: {safe_target_objects}, unsafe_objects: {unsafe_target_objects}")
+            logger.debug(f"Categorizer -> perform_target_categorization(): ENDS, safe_target_objects: {safe_target_objects}, unsafe_objects: {unsafe_target_objects}")
             return (safe_target_objects, unsafe_target_objects)
 
 
         except Exception as e:
-            logger.info(f"Error occured in Categorizer -> perform_target_categorization(), error: {e}")
+            logger.error(f"Error occured in Categorizer -> perform_target_categorization(), error: {e}")
             raise e
         
 
 
     def assign_decision_status_for_target_objects(self, all_target_objects: List[FishFrameObject], safe_targets: List[FishFrameObject], unsafe_targets: List[FishFrameObject], selected_track_id: Optional[int]) -> List[FishFrameObject]:
         try:
-            logger.info(f"Categorizer -> assign_decision_status_for_target_objects(): STARTS, SAFE: {safe_targets}, UNSAFE: {unsafe_targets}, SEL_ID: {selected_track_id}")
+            logger.debug(f"Categorizer -> assign_decision_status_for_target_objects(): STARTS, SAFE: {safe_targets}, UNSAFE: {unsafe_targets}, SEL_ID: {selected_track_id}")
             
             # Creating a dict of {track_id, priority_score}
             id_score_dict: Dict[int, float] = {}
@@ -117,10 +117,10 @@ class Categorizer:
                 obj.priority_score = id_score_dict[obj.track_id]
 
 
-            logger.info(f"Categorizer -> assign_decision_status_for_target_objects(): ENDS, all_target_objects: {all_target_objects}")
+            logger.debug(f"Categorizer -> assign_decision_status_for_target_objects(): ENDS, all_target_objects: {all_target_objects}")
             return all_target_objects
 
 
         except Exception as e:
-            logger.info(f"Error occurred in Categorizer -> assign_decision_status_for_target_objects(), error: {e}")
+            logger.error(f"Error occurred in Categorizer -> assign_decision_status_for_target_objects(), error: {e}")
             raise e

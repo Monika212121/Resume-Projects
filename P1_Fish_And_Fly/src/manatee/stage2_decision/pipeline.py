@@ -1,7 +1,7 @@
 # Aim: This is entry point of the Decision Pipeline
 
 from src.common.logging import logger
-from src.common.entity.dispatch_order import DispatchOrder, OperationMode
+from src.common.entity.dispatch import DispatchOrder
 
 from src.fish.stage2_decision.entity import DecisionConfig
 
@@ -13,7 +13,7 @@ class DecisionPipeline:
         pass
 
 
-
+'''
     def run(self, dispatch_order: DispatchOrder) -> OperationMode:
         try:
             logger.info(f"DecisionPipeline -> run(): STARTS, dispatch_order: {dispatch_order}")
@@ -35,3 +35,4 @@ class DecisionPipeline:
         except Exception as e:
             logger.info(f"Error occurred in DecisionPipeline -> run(), error: {e}")
             raise e
+'''

@@ -1,4 +1,4 @@
-from src.common.entity.log_file_paths import LogFilePaths
+from src.common.entity.basic_paths import LogFilePaths
 from src.common.logging.object_csv_logger import ObjectCSVLogger
 from src.common.logging.telemetry_csv_logger import TelemetryCSVLogger
 

@@ -43,7 +43,7 @@ class CameraToFishFrameProjector:
         :rtype: FishFrameObject
         """
         try:
-            logger.info(f"CameraToFishFrameProjector -> project_image_to_fish_frame(): STARTS, track_id: {tracked_obj.track_id}")
+            logger.debug(f"CameraToFishFrameProjector -> project_image_to_fish_frame(): STARTS, track_id: {tracked_obj.track_id}")
 
             x1, y1, x2, y2 = tracked_obj.bbox
 
@@ -78,7 +78,7 @@ class CameraToFishFrameProjector:
                 original_bbox = tracked_obj.bbox
             )
 
-            logger.info(f"CameraToFishFrameProjector -> project_image_to_fish_frame(): ENDS")
+            logger.debug(f"CameraToFishFrameProjector -> project_image_to_fish_frame(): ENDS")
             return fish_frame_object
     
 

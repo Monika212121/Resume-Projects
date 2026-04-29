@@ -22,7 +22,7 @@ class PriorityReasoner:
     # Hazard Proximity Check
     def is_hazard_near_target(self, target_object: FishFrameObject, hazard_objects: List[FishFrameObject]) -> bool:
         try:
-            logger.info(f"PriorityReasoner -> is_hazard_near_target(): ENDS, target: {target_object}, hazard_objects: {hazard_objects}")
+            logger.debug(f"PriorityReasoner -> is_hazard_near_target(): ENDS, target: {target_object}, hazard_objects: {hazard_objects}")
 
             for hazard_obj in hazard_objects:
                 # Calculating distance between the target and this hazard object
@@ -31,20 +31,20 @@ class PriorityReasoner:
                 dz = target_object.relative_position.z - hazard_obj.relative_position.z           
 
                 distance = math.sqrt(dx*dx + dy*dy + dz*dz)
-                logger.info(f"PriorityReasoner -> is_hazard_near_target(), distance: {distance}")
+                logger.debug(f"PriorityReasoner -> is_hazard_near_target(), distance: {distance}")
 
                 # Checking if hazard is near to the target object
                 if distance < self.hazard_radius:
-                    logger.info(f"PriorityReasoner -> is_hazard_near_target(), hazard_near: True")
+                    logger.debug(f"PriorityReasoner -> is_hazard_near_target(), hazard_near: True")
                     return True
 
 
-            logger.info(f"PriorityReasoner -> is_hazard_near_target(): ENDS, hazard_near: False")
+            logger.debug(f"PriorityReasoner -> is_hazard_near_target(): ENDS, hazard_near: False")
             return False
 
 
         except Exception as e:
-            logger.info(f"Error occurred in PriorityReasoner -> is_hazard_near_target(), error: {e}")
+            logger.error(f"Error occurred in PriorityReasoner -> is_hazard_near_target(), error: {e}")
             raise e
         
 
@@ -52,7 +52,7 @@ class PriorityReasoner:
     # Hazard-Aware Priority Scoring
     def calculate_priority_score(self, target_objects: List[FishFrameObject], hazard_objects: List[FishFrameObject]) -> List[FishFrameObject]:
         try:
-            logger.info(f"PriorityReasoner -> rank_targets(): STARTS, target_objects: {target_objects}, hazard_objects: {hazard_objects}")
+            logger.debug(f"PriorityReasoner -> rank_targets(): STARTS, target_objects: {target_objects}, hazard_objects: {hazard_objects}")
 
             for obj in target_objects:
 
@@ -74,7 +74,7 @@ class PriorityReasoner:
 
                 obj.priority_score = priority_score
 
-            logger.info(f"PriorityReasoner -> rank_targets(): ENDS, ranked_objects: {target_objects}")
+            logger.debug(f"PriorityReasoner -> rank_targets(): ENDS, ranked_objects: {target_objects}")
             return target_objects
 
 

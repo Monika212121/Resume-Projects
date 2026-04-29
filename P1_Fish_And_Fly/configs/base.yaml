@@ -18,3 +18,18 @@ runtime:
 log_paths:
   mission_object_log: artifacts/logs/mission_object_log.csv
   mission_telemetry_log: artifacts/logs/mission_telemetry_log.csv
+
+
+video_writer:
+  perception_record_path: outputs/recording/perception
+  simulation_record_path: outputs/recording/simulation
+  perception_fps: 30
+  simualtion_fps: 15
+
+video_writer:
+  perception:
+    record_path: outputs/recording/perception
+    fps: 30
+  simulation:
+    record_path: outputs/recording/simulation
+    fps: 15

@@ -1,6 +1,7 @@
 # AIM: Define our operational workspace. 
+import pybullet as p
 
-from src.fish.stage3_action.entity import MissionPhase
+from src.common.utils.mission import MissionPhase
 
 
 
@@ -45,4 +46,12 @@ TEXT_COLOR = {
     MissionPhase.RETURN_HQ: [0,1,0],            # green
     MissionPhase.DESCEND: [0,1,0],              # green
     MissionPhase.ASCEND: [0,1,0]                # green
+}
+
+
+SHAPE_MAP = {
+    "sphere": p.GEOM_SPHERE,
+    "box": p.GEOM_BOX,
+    "capsule": p.GEOM_CAPSULE,
+    "cylinder": p.GEOM_CYLINDER
 }

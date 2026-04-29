@@ -31,6 +31,7 @@ class SpawnObject:
 
 @dataclass
 class Visual:
+    machines: List[SpawnObject]   
     targets: List[SpawnObject]
     entities: List[SpawnObject]
     hazards: List[SpawnObject]
@@ -63,3 +64,9 @@ class SimulationConfig:
     record_output: bool
     spawning: SpawningConfig
     grasp_threshold: int
+
+
+@dataclass
+class ManateeSimulationConfig:
+    visualization: SimulationVisualization
+    spawning: SpawningConfig

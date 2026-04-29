@@ -2,7 +2,7 @@
 # Models used: YOLOv8s
 
 visualization:                                               # `record_output` toggle in 'io' config can be triggered, only when this toggle is ON
-  enabled_gui: true
+  enabled_gui: false
 
 
 io:
@@ -12,7 +12,7 @@ io:
     source_height: 1080
     display_width: 640
     display_height: 480
-  record_output: true                                       # enabling Inference video recording. To unlock this feature, `enabled_gui` in Visualization config must be `true`
+  record_output: true                                        # enabling Inference video recording. To unlock this feature, `enabled_gui` in Visualization config must be `true`
   camera: 
     device_id: 0
   video:
@@ -36,11 +36,25 @@ class_names:
   - starfish
   - turtle
 
+# Not used in Manatee but keeping as VisionConfig is common as Fish.
+training: 
+  model_name: model/yolov8s.pt
+  model_parameters:
+    data: dataset/Marine-project-3/data.yaml
+    imgsz: 640
+    epochs: 100
+    batch: 16
+    device: cpu
+    optimizer: AdamW
+    patience: 30
+    lr0: 0.001
+    project: src/common/vision/model_result                   # specify location to save trained YOLO model's weights here 
+    name: V1
 
 
 inference:
   weights: src/common/vision/model_result/V1/weights/best.pt
-  conf: 0.4
+  conf: 0.8
   imgsz: 640
   verbose: false
 
@@ -51,6 +65,11 @@ tracking:
   persist: true
   verbose: false
 
+# Not used in Manatee, remove it later, taking care of VisionConfig
+aggregation:
+  max_history: 15
+  stable_age: 5                                                 # Number of frames, an object must appear to be considered stable
+  max_idle_frames: 30                                           # Number of frames, an object is not seen
 
 
 # Semantic categories

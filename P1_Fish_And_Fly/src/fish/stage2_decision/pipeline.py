@@ -36,7 +36,7 @@ class DecisionPipeline:
 
     def run(self, fish_frame_objects: Dict[int, FishFrameObject]) -> DecisionResult:
         try:
-            logger.info(f"DecisionPipeline -> run(): STARTS, fish_frame_objects: {fish_frame_objects}")
+            logger.debug(f"DecisionPipeline -> run(): STARTS, fish_frame_objects: {fish_frame_objects}")
 
             # Default decision result
             categorized_objects = CategorizedObjects(
@@ -53,19 +53,19 @@ class DecisionPipeline:
             )
 
             if len(fish_frame_objects) == 0:              
-                logger.info(f"DecisionPipeline-> run(): No tracked active objects are received from the Vision module")
+                logger.error(f"DecisionPipeline-> run(): No tracked active objects are received from the Vision module")
                 return decision_result
 
             # Stability filtering
             stable_objects = self.filter.filter_by_stability_rules(fish_frame_objects)
             if len(stable_objects) == 0:
-                logger.info(f"DecisionPipeline-> run(): No stable objects")
+                logger.error(f"DecisionPipeline-> run(): No stable objects")
                 return decision_result
 
             # Hard rules filtering
             eligible_objects = self.filter.filter_by_hard_rules(stable_objects)
             if len(eligible_objects) == 0:
-                logger.info(f"DecisionPipeline-> run(): No eligible objects")
+                logger.error(f"DecisionPipeline-> run(): No eligible objects")
                 return decision_result
             
             # NOTE: Assigning priority_score and decision status for environment and hazard objects during semantic categorization
@@ -73,19 +73,19 @@ class DecisionPipeline:
             # Semantic categorization
             categorized_objects = self.categorizer.perform_semantic_categorization(eligible_objects= eligible_objects)
             if len(categorized_objects.collection_targets) == 0:
-                logger.info(f"DecisionPipeline-> run(): No collection target objects")
+                logger.error(f"DecisionPipeline-> run(): No collection target objects")
                 decision_result.categorized_objects = categorized_objects               # updating result with categorized objects, rest of them is None
                 return decision_result 
 
             # Hazard-aware Priority score calculation
             ranked_target_objects = self.reasoner.calculate_priority_score(target_objects = categorized_objects.collection_targets, hazard_objects= categorized_objects.navigation_hazards)
             if len(ranked_target_objects) == 0:
-                logger.info(f"DecisionPipeline-> run(): No priority-scored objects")
+                logger.error(f"DecisionPipeline-> run(): No priority-scored objects")
                 return decision_result
             
             # Sorting the scored target objects w.r.t priority score in descending order
             ranked_target_objects.sort(key = lambda x: x.priority_score, reverse = True)                           
-            logger.info("DecisionPipeline -> run(): Ranked objects: " + ", ".join(f"(id={obj.track_id}, score={obj.priority_score:.2f})" for obj in ranked_target_objects))
+            logger.debug("DecisionPipeline -> run(): Ranked objects: " + ", ".join(f"(id={obj.track_id}, score={obj.priority_score:.2f})" for obj in ranked_target_objects))
 
             # Hazard safety filtering 
             safe_target_objects, unsafe_target_objects = self.categorizer.perform_target_categorization(ranked_target_objects = ranked_target_objects)
@@ -114,10 +114,10 @@ class DecisionPipeline:
                 selected_target= selected_target
             )
 
-            logger.info(f"DecisionPipeline -> run(): ENDS, decision_result: {decision_result}")
+            logger.debug(f"DecisionPipeline -> run(): ENDS, decision_result: {decision_result}")
             return decision_result
 
 
         except Exception as e:
-            logger.info(f"Error occurred in DecisionPipeline -> run(), error: {e}")
+            logger.error(f"Error occurred in DecisionPipeline -> run(), error: {e}")
             raise e

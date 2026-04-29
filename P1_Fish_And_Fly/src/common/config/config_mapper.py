@@ -1,6 +1,6 @@
 from typing import List, Iterable, Protocol
 
-from src.fish.stage3_action.entity import Waypoint
+from src.common.entity.position import Waypoint
 
 
 # NOTE: This means: “Any object with attributes x, y, z of type float is acceptable.”

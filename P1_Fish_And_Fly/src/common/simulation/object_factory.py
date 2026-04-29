@@ -3,13 +3,7 @@ from typing import Tuple, Optional
 
 from src.common.logging import logger
 from src.common.simulation.entity import SpawnObject
-
-SHAPE_MAP = {
-    "sphere": p.GEOM_SPHERE,
-    "box": p.GEOM_BOX,
-    "capsule": p.GEOM_CAPSULE,
-    "cylinder": p.GEOM_CYLINDER
-}
+from src.common.simulation.constants import SHAPE_MAP
 
 
 def create_body(body_info: SpawnObject, position: Tuple[float, float, float], orientation: Optional[Tuple[float,float,float,float]]) -> int:

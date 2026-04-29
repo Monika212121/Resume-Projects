@@ -82,23 +82,24 @@ class ObjectCSVLogger:
                     new_entry.final_action_status
                 ])
 
-            logger.info(f"ObjectCSVLogger -> log(), Recorded successfully: {new_entry.track_id}")   
+            logger.debug(f"ObjectCSVLogger -> log(), Recorded successfully: {new_entry.track_id}")   
 
 
         except Exception as e:
-            logger.info(f"ObjectCSVLogger -> log(), Error occurred for new entry: {new_entry}, received error: {e}")
+            logger.error(f"ObjectCSVLogger -> log(), Error occurred for new entry: {new_entry}, received error: {e}")
             raise e
+
 
 
     # Not using this fucniton now
     def log_lost_object(self, lost_objects: List[TrackedObject]):
         try:
-            logger.info(f"ObjectCSVLogger -> log_lost_object(): STARTS, lost_objects: {lost_objects}")
+            logger.debug(f"ObjectCSVLogger -> log_lost_object(): STARTS, lost_objects: {lost_objects}")
                                                                                                                                          
             for obj in lost_objects:
                 # If already logged, then skip
                 if obj.track_id in self.logged_ids:
-                    logger.info(f"log_lost_object(): **********************SKIPPED")
+                    logger.error(f"log_lost_object(): **********************SKIPPED")
                     continue
 
                 # If target is ignored due to low score but safe, tehy it will log when it will be selected, so avoid logging them
@@ -123,14 +124,15 @@ class ObjectCSVLogger:
                     final_action_status= ActionStatus.LOST.name
                 )
 
-                logger.info(f"log_lost_object(): new_entry: {new_entry}")
+                logger.debug(f"log_lost_object(): new_entry: {new_entry}")
+
                 # Logging into the `garbage.csv` file.
                 self.log_object(new_entry)                  
 
                 # Updating the logged_ids list with the new entry.
                 self.logged_ids.add(obj.track_id)
             
-            logger.info(f"ObjectCSVLogger -> log_lost_object(): ENDS")
+            logger.debug(f"ObjectCSVLogger -> log_lost_object(): ENDS")
             return 
         
         
@@ -142,7 +144,7 @@ class ObjectCSVLogger:
 
     def log_non_selectable_objects(self, categorized_objects: CategorizedObjects):
         try:
-            logger.info(f"ObjectCSVLogger -> log_non_selectable_objects(): STARTS")
+            logger.debug(f"ObjectCSVLogger -> log_non_selectable_objects(): STARTS")
             
             # Log unsafe targets (target near hazard objects)
             for object in categorized_objects.collection_targets:
@@ -172,6 +174,7 @@ class ObjectCSVLogger:
 
             # Log environment entities
             for object in categorized_objects.environment_entities:
+
                 # If already logged, then skip
                 if object.track_id in self.logged_ids:
                     continue
@@ -179,7 +182,7 @@ class ObjectCSVLogger:
                 new_entry = ObjectLogEntry(
                     track_id= object.track_id,
                     class_name= object.class_name,
-                    age = object.age,
+                    age= object.age,
                     avg_confidence= object.avg_confidence,
                     priority_score= object.priority_score,
                     entity_role= object.entity_role.name,
@@ -194,8 +197,10 @@ class ObjectCSVLogger:
                 # Updating the logged_ids list with the new entry.
                 self.logged_ids.add(object.track_id)
 
+
             # Log navigation hazards
             for object in categorized_objects.navigation_hazards:
+
                 # If already logged, then skip
                 if object.track_id in self.logged_ids:
                     continue
@@ -219,7 +224,7 @@ class ObjectCSVLogger:
                 self.logged_ids.add(object.track_id)
             
 
-            logger.info(f"ObjectCSVLogger -> log_non_selectable_objects(): ENDS")
+            logger.debug(f"ObjectCSVLogger -> log_non_selectable_objects(): ENDS")
             return 
         
 
@@ -231,16 +236,16 @@ class ObjectCSVLogger:
 
     def log_selected_target(self, selected_object: FishFrameObject, feedback_command: LifeCycleCommand):
         try:
-            logger.info(f"ObjectCSVLogger -> log_selected_target(): STARTS")
+            logger.debug(f"ObjectCSVLogger -> log_selected_target(): STARTS")
 
             # Checking through a ONE TIME LOGGING GUARD, if so, skip logging.                               # refer ACTION_NOTES.md (3) 
             if selected_object.track_id in self.logged_ids:
-                logger.info(f"ObjectCSVLogger -> log_selected_target(), This object is already logged, track_id: {selected_object.track_id}")
+                logger.debug(f"ObjectCSVLogger -> log_selected_target(), This object is already logged, track_id: {selected_object.track_id}")
                 return                                                                                                                                              
             
             # If the target is unattempted, then skip logging, as it is yet to be handled
             if feedback_command.action == LifeCycleAction.UNATTEMPTED:
-                logger.info(f"ObjectCSVLogger -> log_selected_target(), Skip logging as this object is unattempted till now")
+                logger.debug(f"ObjectCSVLogger -> log_selected_target(), Skip logging as this object is unattempted till now")
                 return
 
             # Determining the target object's final status, according to the feedback command received.
@@ -255,7 +260,7 @@ class ObjectCSVLogger:
             new_entry = ObjectLogEntry(
                 track_id= selected_object.track_id,
                 class_name= selected_object.class_name,
-                age = selected_object.age,
+                age= selected_object.age,
                 avg_confidence= selected_object.avg_confidence,
                 priority_score= selected_object.priority_score,
                 entity_role= selected_object.entity_role.name,
@@ -270,8 +275,8 @@ class ObjectCSVLogger:
             # Updating the logged_ids list with the new entry.
             self.logged_ids.add(selected_object.track_id)
             
-            logger.info(f"ObjectCSVLogger -> log_selected_target(): ENDS")
-            return 
+            logger.debug(f"ObjectCSVLogger -> log_selected_target(): ENDS")
+            return
 
 
         except Exception as e:

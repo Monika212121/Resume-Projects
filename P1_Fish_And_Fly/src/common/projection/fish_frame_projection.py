@@ -36,13 +36,13 @@ class FishFrameProjector:
         :rtype: Tuple[Dict[int, FishFrameObject], FishFrameObject | None]
         """
         try:
-            logger.info(f"FishFrameProjector -> transform_to_fish_frame(): STARTS, active_objects: {active_objects}")
+            logger.debug(f"FishFrameProjector -> transform_to_fish_frame(): STARTS, active_objects: {active_objects}")
 
             fish_frame_objects : Dict[int, FishFrameObject] = {}
 
             # If there are no active tracked objects, returns empty Dict
             if len(active_objects) == 0:
-                logger.info(f"FishFrameProjector -> transform_to_fish_frame(), No active objects are received from Vision module")
+                logger.error(f"FishFrameProjector -> transform_to_fish_frame(), No active objects are received from Vision module")
                 return fish_frame_objects
             
             # Apply frame transformation(image_frame -> fish_frame) to all active tracked objects
@@ -55,10 +55,10 @@ class FishFrameProjector:
                 fish_frame_objects[obj.track_id] = fish_frame_obj
 
 
-            logger.info(f"FishFrameProjector -> transform_to_fish_frame(): ENDS, fish_frame_objects: {fish_frame_objects}")
+            logger.debug(f"FishFrameProjector -> transform_to_fish_frame(): ENDS, fish_frame_objects: {fish_frame_objects}")
             return fish_frame_objects
 
 
         except Exception as e:
-            logger.info(f"Error occurred in FishFrameProjector -> transform_to_fish_frame(), error: {e}")
+            logger.error(f"Error occurred in FishFrameProjector -> transform_to_fish_frame(), error: {e}")
             raise e
