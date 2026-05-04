@@ -321,3 +321,10 @@ Depth is treated as a mission-level attribute, not a perception property.
 Non-exposed phases: UNLOADING / DESCEND / ASCEND / RETURN_HQ / ABORT in action feedback to the main pipeline. 
 Exposed phases: SURFACE / UNDERWATER / DONE 
 ```
+
+
+13.) In `fish_unload_garbage()`, I am sending fish robot to go to the nearest dump point and then return back to the same position.
+
+- Now, if the fish robot cannot return to the `freezed start point`, then I am marking this `unload mission as FAILURE` and I mark this `dumpEvent = None`.
+- Even if the dumping is `DONE` and problem occurred while returning to start point, I am still marking this `unload sub-mission as FAILURE` and I mark `DumpEvent = None`.
+- Secondly, if there is any issue occurred during abort_mission() and the fish robot cannot reach to the HQ, then `need_manatee_help = True` will be returned, else `False`.

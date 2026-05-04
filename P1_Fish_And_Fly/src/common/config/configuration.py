@@ -2,17 +2,23 @@ from typing import List
 from box import ConfigBox
 from dataclasses import fields
 
-from src.common.entity.log_file_paths import LogFilePaths
+from src.common.logging import logger
+from src.common.action.entity import Bin
+from src.common.io.entity import IOConfig
 from src.common.config.config_loader import load_machine_config
 from src.common.config.config_mapper import parse_waypoint, parse_waypoint_list
+from src.common.entity.basic_paths import LogFilePaths, VideoWriterConfig
+from src.common.entity.cost_models import CostWeights, VehicleModel, NormalizationLimits, CostModel
+from src.common.simulation.entity import ManateeSimulationConfig, SimulationVisualization, SimulationConfig, SpawningConfig, SpawnObject, Visual, SpawnZone
+from src.common.vision.entity import ModelParameter, YOLOModelTrainerConfig, InferenceConfig, TrackingConfig, Categories, PerceptionVisualization, AggregationConfig, VisionConfig
 
-from src.fly.stage1_action.entity import MonitorConfig
-from src.fly.stage1_action.entity import FlightControllerConfig
+from src.fly.stage1_controller.entity import FlightControllerConfig
+from src.fly.stage3_decision.entity import DumpConfig, DMSConfig, MonitoringConfig, FlyDecisionConfig
 
-from src.fish.stage1_vision.entity import PerceptionVisualization, IOConfig, ModelParameter, YOLOModelTrainerConfig, InferenceConfig, TrackingConfig, AggregationConfig, Categories, VisionConfig
 from src.fish.stage2_decision.entity import RuleFilterConfig, PriorityReasonerConfig, DecisionConfig
-from src.fish.stage3_action.entity import ActionConfig, Mission, Bin, Navigation, CostWeights, VehicleModel, NormalizationLimits, CostModel, DumpLocation
-from src.fish.stage4_simulation.entity import SimulationVisualization, SimulationConfig, SpawningConfig, SpawnObject, Visual, SpawnZone
+from src.fish.stage3_action.entity import ActionConfig, Mission, Navigation 
+
+from src.manatee.stage3_action.entity import ManateeActionConfig, ManateeMission, ManateeNavigation
 
 
 
@@ -49,6 +55,109 @@ class ConfigurationManager():
         return log_file_paths
     
 
+    # VIDEO WRITER CONFIGURATION
+    def get_video_writer_config(self) -> VideoWriterConfig:
+        cfg = self._config.video_writer
+
+        video_writer_config = VideoWriterConfig(
+            perception= cfg.perception,
+            simulation= cfg.simulation
+        )
+        
+        return video_writer_config
+        
+
+    
+    #----------------------------------------COMMON CONFIGURATIONS----------------------------------------------------------------------
+
+
+    # Infrastructure config of all 8 dump points
+    def get_dump_points_config(self) -> List[DumpConfig]:
+        cfg = self._config[self.machine].infrastructure.dump_points
+
+        default_capacity = cfg.get("default_capacity", 50)
+
+        dumps: List[DumpConfig] = []
+        for d in cfg.points:
+            dumps.append(
+                DumpConfig(
+                    dump_id= d.id,
+                    position= parse_waypoint(d.position),
+                    capacity= default_capacity
+                )
+            )
+
+        return dumps
+    
+
+
+    # Simulation config for the whole project
+    def get_simulation_config(self) -> SimulationConfig:
+        cfg = self._config[self.machine].simulation
+
+        simulation_config = SimulationConfig(
+            visualization= cfg.visualization,
+            record_output= cfg.record_output,
+            spawning= self.get_spawn_config(),
+            grasp_threshold= cfg.grasp_threshold
+        )
+
+        return simulation_config
+
+
+    def get_spawn_config(self) -> SpawningConfig:
+        spawning_config = SpawningConfig(
+            visual= self.get_spawn_visual_config(),
+            zone= self.get_spawn_zone_config()
+        )
+
+        return spawning_config
+    
+
+    def get_spawn_visual_config(self) -> Visual:
+        cfg = self._config[self.machine].simulation.spawning.visual
+
+        visual_spawning_config = Visual(
+            machines= self._parse_spawn_objects(cfg.machines),
+            targets= self._parse_spawn_objects(cfg.targets),
+            entities= self._parse_spawn_objects(cfg.entities),
+            hazards= self._parse_spawn_objects(cfg.hazards),
+        )
+
+        return visual_spawning_config
+
+
+    # helper function of above function
+    def _parse_spawn_objects(self, cfg_objects):
+        objects = []
+
+        for obj in cfg_objects:
+            objects.append(
+                SpawnObject(
+                    name=obj.name,
+                    shape=obj.shape,
+                    size=tuple(obj.size),
+                    color=tuple(obj.color),
+                    count=obj.count,
+                )
+            )
+
+        return objects
+
+
+    def get_spawn_zone_config(self) -> SpawnZone:
+        cfg = self._config[self.machine].simulation.spawning.zones
+
+        zones_config = SpawnZone(
+            targets = cfg.targets,
+            entities= cfg.entities,
+            hazards= cfg.hazards,
+        )
+
+        return zones_config
+
+    
+
     #-----------------------------------------VISUALIZATION CONFIGURATIONS---------------------------------------------------------------
 
     # 1. PERCEPTION
@@ -62,7 +171,7 @@ class ConfigurationManager():
         return visualizer_config    
 
     
-    # 2. SIMULATION
+    # 2. SIMULATION(not getting used anywhere)
     def get_simulation_visualization_config(self) -> SimulationVisualization:
         cfg = self._config[self.machine].simulation.visualization
 
@@ -230,8 +339,7 @@ class ConfigurationManager():
     def get_action_config(self) -> ActionConfig:
         action_config = ActionConfig(
             mission= self.get_mission_config(),
-            cost_model= self.get_cost_model_config(),
-            dump_location= self.get_dump_location_config()
+            cost_model= self.get_cost_model_config()
         )
 
         return action_config
@@ -278,15 +386,6 @@ class ConfigurationManager():
         return nav_cfg
     
 
-    def get_dump_location_config(self) -> DumpLocation:
-        cfg = self._config[self.machine].action
-
-        dump_location = DumpLocation(
-            d_points = parse_waypoint_list(cfg.dump_location)
-        )
-
-        return dump_location
-
 
     def get_cost_model_config(self) -> CostModel:
         cfg = self._config[self.machine].action.cost_model
@@ -324,93 +423,92 @@ class ConfigurationManager():
 
     
 
-    # 4. SIMULATION CONFIGURATIONS
-
-    def get_simulation_config(self) -> SimulationConfig:
-        cfg = self._config[self.machine].simulation
-
-        simulation_config = SimulationConfig(
-            visualization= self.get_simulation_visualization_config(),
-            spawning= self.get_spawn_config(),
-            grasp_threshold= cfg.grasp_threshold
-        )
-
-        return simulation_config
-
-
-    def get_spawn_config(self) -> SpawningConfig:
-        spawning_config = SpawningConfig(
-            visual= self.get_spawn_visual_config(),
-            zone= self.get_spawn_zone_config()
-        )
-
-        return spawning_config
-    
-
-    def get_spawn_visual_config(self) -> Visual:
-        cfg = self._config[self.machine].simulation.spawning.visual
-
-        visual_config = Visual(
-            targets= self._parse_spawn_objects(cfg.targets),
-            entities= self._parse_spawn_objects(cfg.entities),
-            hazards= self._parse_spawn_objects(cfg.hazards),
-        )
-
-        return visual_config
-
-    # helper function of above function
-    def _parse_spawn_objects(self, cfg_objects):
-        objects = []
-
-        for obj in cfg_objects:
-            objects.append(
-                SpawnObject(
-                    name=obj.name,
-                    shape=obj.shape,
-                    size=tuple(obj.size),
-                    color=tuple(obj.color),
-                    count=obj.count,
-                )
-            )
-
-        return objects
-
-
-    def get_spawn_zone_config(self) -> SpawnZone:
-        cfg = self._config[self.machine].simulation.spawning.zones
-
-        zones_config = SpawnZone(
-            targets = cfg.targets,
-            entities= cfg.entities,
-            hazards= cfg.hazards,
-        )
-
-        return zones_config
-
-
 
     # ******************************************************FLY CONFIGURATIONS*************************************************
-
-    # 2. ACTION CONFIGURATIONS
     
-    # FLIGHT CONTROLLER
+    # FLIGHT CONTROLLER CONFIGURATIONS
     def get_controller_config(self) -> FlightControllerConfig:
-        cfg = self._config[self.machine].action.controller
+        cfg = self._config[self.machine].controller
 
         controller_cfg = FlightControllerConfig(
-            home= cfg.home
+            hover_position= cfg.hover_position
         )
 
         return controller_cfg
 
 
-    # HEARTBEAT MONITOR
-    def get_monitor_config(self) -> MonitorConfig:
-        cfg = self._config[self.machine].action.monitor
+    # DECISION CONFIGURATIONS
+    def get_fly_decision_config(self) -> FlyDecisionConfig:
 
-        monitor_cfg = MonitorConfig(
+        decision_cfg = FlyDecisionConfig(
+            dms= self.get_dms_config(),
+            monitor= self.get_monitor_config()
+        )
+
+        return decision_cfg
+    
+    
+    def get_dms_config(self) -> DMSConfig:
+        cfg = self._config[self.machine].decision.dms
+
+        if cfg is None:
+            raise ValueError("Missing 'dms' config")
+
+        return DMSConfig(
+            threshold= cfg.get("threshold", 0.85),
+            cooldown= cfg.get("cooldown", 60)
+        )
+
+
+
+    def get_monitor_config(self) -> MonitoringConfig:
+        cfg = self._config[self.machine].decision.monitoring
+
+        monitor_cfg = MonitoringConfig(
             timeout_sec= cfg.timeout_sec,
             freeze_sec= cfg.freeze_sec
         )
 
         return monitor_cfg
+    
+
+    # **********************************************************************MANATEE CONFIGURATIONS*************************************************************************
+
+
+    def get_manatee_action_config(self) -> ManateeActionConfig:
+        
+        action_cfg = ManateeActionConfig(
+            mission= self.get_manatee_mission_config(),
+            cost_model= self.get_cost_model_config()
+        )
+
+        return action_cfg
+
+
+
+    def get_manatee_mission_config(self) -> ManateeMission:
+        cfg = self._config[self.machine].action.mission
+
+        mission_cfg = ManateeMission(
+            hq_point= cfg.hq_point,
+            depths= cfg.depths,
+            navigation= self.get_manatee_navigation_config(),
+            limits= cfg.limits,
+            bin_manager= cfg.bin_manager
+        )
+
+        return mission_cfg
+
+
+
+    def get_manatee_navigation_config(self) -> ManateeNavigation:
+        cfg = self._config[self.machine].action.mission.navigation
+
+        navigation_cfg = ManateeNavigation(
+            start_point= parse_waypoint(cfg.start_point),
+            end_point= parse_waypoint(cfg.end_point),
+            speeds= cfg.speeds,
+            reach_threshold= cfg.reach_threshold
+        )
+
+        return navigation_cfg

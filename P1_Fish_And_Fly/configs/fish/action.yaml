@@ -1,4 +1,4 @@
-# This file contains configurations for the Fish action logic configurations
+# This file contains Action configurations for the Fish module
 
 mode: simulation
 
@@ -32,17 +32,18 @@ mission:
     sweep_step: 5.0                       # meters between scan lines
     reach_threshold: 5
     speeds:  
-      surface: 1.2
-      underwater: 1.2
+      surface: 5
+      underwater: 5
 
   limits:
     max_operation_retries: 3
     max_mission_time_sec: 3600
     max_target_loss_ignore: 10            # Maximum targets that can be ignored if LOST(failed to collect).
+    max_step_retry_ignore: 3
 
   bin_manager:
     bin_capacity: 10                          # in litres
-    alert_threshold: 0.9
+    alert_threshold: 0.2
     
 # ---------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -68,43 +69,3 @@ cost_model:
     max_uncertainty: 5.0
 
 
-# ---------------------------------------------------------------------------------------------------------------------------------------------------
-
-# WORLD_BOUNDS: 0 → 120
-
-dump_location:
-  # South edge
-  - x: 30.0
-    y: 3.0
-    z: 0.0
-
-  - x: 90.0
-    y: 3.0
-    z: 0.0
-
-  # East edge
-  - x: 117.0
-    y: 30.0
-    z: 0.0
-
-  - x: 117.0
-    y: 90.0
-    z: 0.0
-
-  # North edge
-  - x: 90.0
-    y: 117.0
-    z: 0.0
-
-  - x: 30.0
-    y: 117.0
-    z: 0.0
-
-  # West edge
-  - x: 3.0
-    y: 90.0
-    z: 0.0
-
-  - x: 3.0
-    y: 30.0
-    z: 0.0

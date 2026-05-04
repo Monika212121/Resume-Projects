@@ -3,9 +3,8 @@
 
 import cv2                                 
 import numpy as np
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 
-from src.fish.stage1_vision.entity import TrackedGarbage
 from src.common.projection.entity import FishFrameObject
 from src.common.visualization.entity import VisualizationEntity, VisualObject
 

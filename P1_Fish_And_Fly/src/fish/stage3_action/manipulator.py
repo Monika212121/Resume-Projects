@@ -28,14 +28,18 @@ class Manipulator:
                 feedback = ActionFeedback(
                     status = ActionStatus.FAILED,
                     track_id = garbage_track_id,
-                    reason = "Target grasp failed"
+                    need_manatee_help= False,
+                    reason = "Target grasp failed",
+                    dump_event= None
                 )
             # Case2: If the locked object is collected successfully
             else:
                 feedback = ActionFeedback(
                     status = ActionStatus.COLLECTED,
                     track_id = garbage_track_id,
-                    reason = "Target collected"
+                    need_manatee_help= False,
+                    reason = "Target collected",
+                    dump_event= None
                 )
                 
             logger.info(f"Manipulator -> resolve_garbage_collection(): ENDS, feedback: {feedback}")
@@ -47,11 +51,10 @@ class Manipulator:
             raise e
         
 
+
     # Just for maintaining internal record of collection targets
     def update_garbage_grasp(self, sim_collected: bool):
         try:
-            logger.info(f"Manipulator -> update_garbage_grasp(): STARTS")
-
             # Updating garbage grasp status, based on the Simulation's result.
             if sim_collected:
                 logger.info(f"Manipulator -> update_garbage_grasp(): Garbage is grasped")

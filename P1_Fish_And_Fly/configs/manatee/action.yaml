@@ -1,0 +1,62 @@
+# This file contains Action configurations for the Manatee module
+
+mode: simulation
+
+mission:
+  hq_point:
+    x: 0.0
+    y: 60.0
+    z: 0.0
+
+  depths:
+    surface: 0.0
+    underwater: -8.0
+
+  navigation:
+    start_point:
+      x: 10.0
+      y: 10.0
+      z: 0.0
+    end_point:
+      x: 110.0
+      y: 110.0
+      z: 0.0
+    speeds:  
+      surface: 20
+      underwater: 10
+    reach_threshold: 10
+
+  limits:
+    max_operation_retries: 3
+    max_mission_time_sec: 3600
+    max_target_loss_ignore: 10            # Maximum targets that can be ignored if LOST(failed to collect).
+    max_step_retry_ignore: 3
+
+  bin_manager:
+    bin_capacity: 10                          # in litres
+    alert_threshold: 0.4
+    
+# ---------------------------------------------------------------------------------------------------------------------------------------------------
+
+cost_model:
+  weights:
+    travel_time: 1.0
+    energy: 2.0
+    current: 1.5
+    drag: 1.2
+    risk: 3.0
+    uncertainty: 2.5
+
+  vehicle:
+    cruise_speed: 0.6        # m/s
+    drag_coeff: 0.9
+    avg_drag_force: 1.4
+
+  normalization:
+    max_distance: 100.0
+    max_energy: 500.0
+    max_current: 2.0
+    max_risk: 10.0
+    max_uncertainty: 5.0
+
+

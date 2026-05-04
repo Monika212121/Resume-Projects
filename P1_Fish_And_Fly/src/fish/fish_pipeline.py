@@ -2,42 +2,60 @@
 
 import cv2
 
+from typing import List, Optional
+
 from src.common.logging import logger
+from src.common.utils.mission import MissionPhase
+from src.common.io.factory import build_vision_input
+from src.common.io.folder_video import FolderVideoInput
+from src.common.logging.result_logger import OutcomeLogger
+from src.common.io.video_writer import VideoWriterManager 
 from src.common.utils.mission import action_is_allowed
 from src.common.utils.objects import get_all_tracked_objects
-from src.common.entity.heartbeat import SystemHeartbeat
+from src.common.simulation.sim_bridge import SimulationBridge
+from src.common.entity.fish_communication import FishControlSignal, SystemHeartbeat
 from src.common.visualization.visualizer import Visualizer
 from src.common.config.configuration import ConfigurationManager
 from src.common.projection.fish_frame_projection import FishFrameProjector
-from src.common.logging.result_logger import OutcomeLogger
+
+from src.fly.stage3_decision.entity import DumpConfig
 
 from src.fish.stage1_vision.pipeline import VisionPipeline
-from src.fish.stage1_vision.io.factory import build_vision_input
-from src.fish.stage1_vision.io.folder_video import FolderVideoInput
 from src.fish.stage2_decision.pipeline import DecisionPipeline
 from src.fish.stage2_decision.entity import LifeCycleAction, LifeCycleCommand
-from src.fish.stage3_action.entity import MissionPhase
 from src.fish.stage3_action.mission_planner import MissionPlanner
 
 
     
 class FishPipeline:
-    def __init__(self, fish_cfg_mg: ConfigurationManager):
+    def __init__(self, fish_cfg: ConfigurationManager, dump_points: List[DumpConfig], simulation_bridge: SimulationBridge):
+        self.cfg_mg = fish_cfg
 
         # Loading the Fish's configurations
-        self.log_file_paths = fish_cfg_mg.get_log_file_paths()
-        self.vision_config = fish_cfg_mg.get_vision_config()
-        self.decision_config = fish_cfg_mg.get_decision_config()
-        self.action_config = fish_cfg_mg.get_action_config()
-        self.simulation_config = fish_cfg_mg.get_simulation_config() 
+        self.log_file_paths = self.cfg_mg.get_log_file_paths()
+        self.vw_config = self.cfg_mg.get_video_writer_config().perception
+        self.vision_config = self.cfg_mg.get_vision_config()
+        self.decision_config = self.cfg_mg.get_decision_config()
+        self.action_config = self.cfg_mg.get_action_config()
+
+        self.recording_enabled = self.vision_config.visualization.enabled_gui
+        self.dump_points = dump_points
 
         # Instantiating the pipelines
+        self.sim_bridge = simulation_bridge                                                                 # shared simulation
         self.result_logger = OutcomeLogger(log_file_paths = self.log_file_paths)
+        self.video_writer = VideoWriterManager(output_dir_path= self.vw_config.record_path, fps= self.vw_config.fps) if self.vision_config.io.record_output else None
         self.vision_pipeline_obj = VisionPipeline(vision_config = self.vision_config)
         self.decision_pipeline_obj = DecisionPipeline(decision_config = self.decision_config)
-        self.mission_planner_obj = MissionPlanner(action_config = self.action_config, simulation_config= self.simulation_config, telemetry_logger = self.result_logger.telemetry_logger)
+        self.mission_planner_obj = MissionPlanner(
+            action_config = self.action_config, 
+            telemetry_logger = self.result_logger.telemetry_logger,
+            dump_points = self.dump_points,
+            simulation_bridge = self.sim_bridge
+        )
         self.fish_frame_projector_obj = FishFrameProjector()
         self.visualization_obj = Visualizer(io_config= self.vision_config.io)
+        
 
 
 
@@ -73,6 +91,9 @@ class FishPipeline:
             if self.video_writer:
                 self.video_writer.release()
 
+            # Stop recording the simulation visualization
+            self.mission_planner_obj.sim_bridge.stop()
+
             logger.info(f"FishPipeline -> terminate(): ENDS")
             return
 
@@ -83,7 +104,7 @@ class FishPipeline:
 
 
 
-    def tick(self) -> SystemHeartbeat:
+    def tick(self, operation_instruction: Optional[FishControlSignal]) -> SystemHeartbeat:
         try:
             logger.info("*********************************************FISH MODULE SYSTEM: STARTS********************************************")
 
@@ -102,12 +123,14 @@ class FishPipeline:
                 logger.info(f"Frame is not captured")
                 
                 # If frame is not received, then abort the mission
-                self.mission_planner_obj.abort_mission()
+                need_manatee_help = self.mission_planner_obj.abort_mission()
 
                 heartbeat = SystemHeartbeat.now(
                     mission_phase= self.mission_planner_obj.phase,
                     position= self.mission_planner_obj.navigator.current_position,
-                    issue= "Frame is not captured, so mission is aborted"
+                    dump_event= None,
+                    issue= "Frame is not captured, so mission is aborted",
+                    need_help= need_manatee_help
                 )
                 return heartbeat
             
@@ -132,7 +155,7 @@ class FishPipeline:
             if self.vision_config.visualization.enabled_gui:
                 all_active_objects = get_all_tracked_objects(active_objects= fish_frame_objects, categorized_objects= categorized_objects)
 
-                self.video_writer = self.visualization_obj.visualize_objects(
+                display_frame = self.visualization_obj.visualize_objects(
                     frame = frame, 
                     all_objects= all_active_objects, 
                     selected_obj= selected_target, 
@@ -140,14 +163,20 @@ class FishPipeline:
                     lost_objects= lost_objects
                 )
 
+                # Record perception video
+                if self.video_writer:
+                    self.video_writer.write(display_frame)
+
                 if cv2.waitKey(1) & 0xFF == ord('q'):                                                        # Exit when 'q' is pressed
-                    # If perception visualization is not interupted, then abort the mission
-                    self.mission_planner_obj.abort_mission()   
+                    # If perception visualization is interupted, then abort the mission
+                    need_manatee_help = self.mission_planner_obj.abort_mission()   
 
                     heartbeat = SystemHeartbeat.now(
                         mission_phase= self.mission_planner_obj.phase,
                         position= self.mission_planner_obj.navigator.current_position,
-                        issue= "Visualization is ended / interupted"
+                        dump_event= None,
+                        issue= "Visualization is ended / interupted",
+                        need_help= need_manatee_help
                     )
                     return heartbeat
 
@@ -203,7 +232,9 @@ class FishPipeline:
                 heartbeat = SystemHeartbeat.now(
                     mission_phase= self.mission_planner_obj.phase,
                     position= self.mission_planner_obj.navigator.current_position,
-                    issue= "Action is not allowed, so Action module is not triggered"
+                    dump_event= None,
+                    issue= "Action is not allowed, so Action module is not triggered",
+                    need_help= False
                 )
                 return heartbeat
 
@@ -214,15 +245,21 @@ class FishPipeline:
 
             # ACTION: Execute the action intent(from Decision -> Action) to collect the target garbage, following the mission planner.
             # SIMULATION: Action and Simulation are connected together and run parallely.
-            logger.info(f"**********************simualtion config:***************,{self.simulation_config}")
-            action_feedback = self.mission_planner_obj.tick(action_intent= action_intent, selected_target= selected_target, categorized_objects= categorized_objects)  
+            action_feedback = self.mission_planner_obj.tick(
+                action_intent= action_intent, 
+                selected_target= selected_target, 
+                categorized_objects= categorized_objects, 
+                locked_dump_ids= operation_instruction.locked_dump_ids if operation_instruction else []
+            )  
 
             # Skip updating lifecycle changes, if there is no object, considered for pickup/picked up
-            if action_intent is None or selected_target is None:
+            if action_intent is None or selected_target is None or action_feedback.need_manatee_help:
                 heartbeat = SystemHeartbeat.now(
                     mission_phase= self.mission_planner_obj.phase,
                     position= self.mission_planner_obj.navigator.current_position,
-                    issue= "No action intent is present, only navigation happened in this tick"
+                    dump_event= action_feedback.dump_event,
+                    issue= "No action intent is present, only navigation happened in this tick",
+                    need_help= action_feedback.need_manatee_help
                 )
                 return heartbeat
                 
@@ -235,7 +272,9 @@ class FishPipeline:
                 heartbeat = SystemHeartbeat.now(
                     mission_phase= self.mission_planner_obj.phase,
                     position= self.mission_planner_obj.navigator.current_position,
-                    issue= "The object's final status is not updated to DONE/LOST"
+                    dump_event= action_feedback.dump_event,
+                    issue= "The object's final status is not updated to DONE/LOST",
+                    need_help= action_feedback.need_manatee_help
                 )
                 return heartbeat
 
@@ -246,7 +285,9 @@ class FishPipeline:
             heartbeat = SystemHeartbeat.now(
                 mission_phase= self.mission_planner_obj.phase,
                 position= self.mission_planner_obj.navigator.current_position,
-                issue= "No issue"
+                dump_event= action_feedback.dump_event,
+                issue= "No issue",
+                need_help= action_feedback.need_manatee_help
             )
 
             logger.info(f"The current heartbeat of this tick is: {heartbeat}")

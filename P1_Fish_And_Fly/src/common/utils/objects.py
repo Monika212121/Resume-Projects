@@ -36,10 +36,10 @@ def get_all_tracked_objects(active_objects: Dict[int, FishFrameObject], categori
             [obj for track_id, obj in active_objects.items() if track_id not in categorized_objects_ids]
         )
         
-        logger.info(f"get_all_tracked_objects(), all_tracked objects: {all_tracked_objects}")
+        logger.debug(f"get_all_tracked_objects(), all_tracked objects: {all_tracked_objects}")
         return all_tracked_objects
 
 
     except Exception as e:
-        logger.info(f"Error occurred in get_all_tracked_objects(), error: {e}")
+        logger.error(f"Error occurred in get_all_tracked_objects(), error: {e}")
         raise e

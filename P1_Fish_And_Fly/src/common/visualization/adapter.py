@@ -7,8 +7,7 @@ from src.common.entity.decision_types import DecisionStatus
 from src.common.projection.entity import FishFrameObject
 from src.common.visualization.colors import STATUS_COLORS
 from src.common.visualization.entity import VisualizationEntity, VisualObject
-
-from src.fish.stage1_vision.entity import EntityRole, TrackedGarbage, TrackedState
+from src.common.vision.entity import EntityRole, TrackedObject, TrackedState
 
 
 
@@ -33,7 +32,8 @@ class VisualizationAdapter:
         self.max_display_count = 5
 
 
-    def build_visual_entity(self, all_objects: List[FishFrameObject], selected_track_id: Optional[int], collected_objects: List[TrackedGarbage], lost_objects: List[TrackedGarbage]) -> VisualizationEntity:
+
+    def build_visual_entity(self, all_objects: List[FishFrameObject], selected_track_id: Optional[int], collected_objects: List[TrackedObject], lost_objects: List[TrackedObject]) -> VisualizationEntity:
 
         visuals: List[VisualObject] = []
 
@@ -68,7 +68,6 @@ class VisualizationAdapter:
             elif obj.entity_role == EntityRole.NAVIGATION_HAZARD:
                 status = TrackedState.AVOIDED
 
-            logger.info(f"***********BUILD*************, STATUS: {status}, color: {STATUS_COLORS.get(obj.state.value, (255, 255, 255))}")
             # creating list of visual objects, for each active tracked object, to display in perception frame.
             visuals.append(
                 VisualObject(
@@ -141,9 +140,9 @@ class VisualizationAdapter:
             grasp_threshold= 0.08
         )
 
-        logger.info(f"visual objects: {visuals}")
-
+        logger.debug(f"visual objects: {visuals}")
         return visual_entities
+
 
 
     def clamp_bounding_box(self, bbox: Tuple[int, int, int, int]) -> Tuple[int, int, int, int]:
@@ -165,5 +164,5 @@ class VisualizationAdapter:
 
 
         except Exception as e:
-            logger.info(f"Error occured in VisualizationAdapter -> clamp_bounding_box(), error: {e}")
+            logger.error(f"Error occured in VisualizationAdapter -> clamp_bounding_box(), error: {e}")
             raise e

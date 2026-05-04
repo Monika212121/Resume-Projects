@@ -6,9 +6,11 @@ import math
 from typing import List, Dict, Any
 
 from src.common.logging import logger
+from src.common.action.entity import Speeds
+from src.common.entity.position import Waypoint
 from src.common.projection.entity import FishFrameObject
 
-from src.fish.stage3_action.entity import Waypoint, Navigation, Speeds
+from src.fish.stage3_action.entity import Navigation
 
 
 
@@ -17,11 +19,12 @@ class PathNavigator:
     Helps in Fish's machine navigation. 
     """
     def __init__(self, navigation_cfg: Navigation):
-        self.navigation_cfg = navigation_cfg
-        self.speeds: Speeds  = navigation_cfg.speeds
-        self.sweep_step: float = navigation_cfg.sweep_step
-        self.current_position: Waypoint = navigation_cfg.start_point
-        self.reach_threshold: float = navigation_cfg.reach_threshold                        # To check target is in reach or not for Fish machine
+        self.cfg = navigation_cfg
+
+        self.speeds: Speeds  = self.cfg.speeds
+        self.sweep_step: float = self.cfg.sweep_step
+        self.current_position: Waypoint = self.cfg.start_point
+        self.reach_threshold: float = self.cfg.reach_threshold                        # To check target is in reach or not for Fish machine
 
         self.path: List[Waypoint] = []
         self.current_index: int = 0                                                         # No. of waypoints crossed in the set path.
@@ -98,8 +101,8 @@ class PathNavigator:
             path: List[Waypoint] = []
 
             # Defining boundary of workspace.
-            x_start, y_start = self.navigation_cfg.start_point.x, self.navigation_cfg.start_point.y
-            x_end, y_end = self.navigation_cfg.end_point.x, self.navigation_cfg.end_point.y
+            x_start, y_start = self.cfg.start_point.x, self.cfg.start_point.y
+            x_end, y_end = self.cfg.end_point.x, self.cfg.end_point.y
 
             direction: int = 1
             y_curr: float = y_start

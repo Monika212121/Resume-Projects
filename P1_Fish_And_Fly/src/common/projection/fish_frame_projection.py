@@ -1,14 +1,12 @@
 # Aim: Project camera detections (image frame) into a robot-centric 2D world frame.
 # This is an APPROXIMATION.
 
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict
 
 from src.common.logging import logger
+from src.common.vision.entity import TrackedObject
 from src.common.projection.entity import FishFrameObject
 from src.common.projection.convert_camera_to_fish_frame import CameraToFishFrameProjector
-
-from src.fish.stage1_vision.entity import TrackedGarbage
-from src.fish.stage2_decision.entity import ActionIntent
 
 
 
@@ -23,7 +21,7 @@ class FishFrameProjector:
 
 
 
-    def transform_to_fish_frame(self, active_objects: List[TrackedGarbage]) -> Dict[int, FishFrameObject]:
+    def transform_to_fish_frame(self, active_objects: List[TrackedObject]) -> Dict[int, FishFrameObject]:
         """
         Transforms active_objects(image_frame) to fish_frame_objects(fish frame).
 
@@ -38,13 +36,13 @@ class FishFrameProjector:
         :rtype: Tuple[Dict[int, FishFrameObject], FishFrameObject | None]
         """
         try:
-            logger.info(f"FishFrameProjector -> transform_to_fish_frame(): STARTS, active_objects: {active_objects}")
+            logger.debug(f"FishFrameProjector -> transform_to_fish_frame(): STARTS, active_objects: {active_objects}")
 
             fish_frame_objects : Dict[int, FishFrameObject] = {}
 
             # If there are no active tracked objects, returns empty Dict
             if len(active_objects) == 0:
-                logger.info(f"FishFrameProjector -> transform_to_fish_frame(), No active objects are received from Vision module")
+                logger.error(f"FishFrameProjector -> transform_to_fish_frame(), No active objects are received from Vision module")
                 return fish_frame_objects
             
             # Apply frame transformation(image_frame -> fish_frame) to all active tracked objects
@@ -57,10 +55,10 @@ class FishFrameProjector:
                 fish_frame_objects[obj.track_id] = fish_frame_obj
 
 
-            logger.info(f"FishFrameProjector -> transform_to_fish_frame(): ENDS, fish_frame_objects: {fish_frame_objects}")
+            logger.debug(f"FishFrameProjector -> transform_to_fish_frame(): ENDS, fish_frame_objects: {fish_frame_objects}")
             return fish_frame_objects
 
 
         except Exception as e:
-            logger.info(f"Error occurred in FishFrameProjector -> transform_to_fish_frame(), error: {e}")
+            logger.error(f"Error occurred in FishFrameProjector -> transform_to_fish_frame(), error: {e}")
             raise e
