@@ -17,7 +17,7 @@ class Manipulator:
 
     def resolve_garbage_collection(self, garbage_track_id: int, sim_collected: bool) -> ActionFeedback:
         try:
-            logger.info(f"Manipulator -> resolve_garbage_collection(): STARTS, track_id: {garbage_track_id}") 
+            logger.debug(f"Manipulator -> resolve_garbage_collection(): STARTS, track_id: {garbage_track_id}") 
 
             # 1. Update the garbage collection status, based on the result of real action/simulation(here)
             self.update_garbage_grasp(sim_collected)
@@ -42,7 +42,7 @@ class Manipulator:
                     dump_event= None
                 )
                 
-            logger.info(f"Manipulator -> resolve_garbage_collection(): ENDS, feedback: {feedback}")
+            logger.debug(f"Manipulator -> resolve_garbage_collection(): ENDS, feedback: {feedback}")
             return feedback
         
         
@@ -57,15 +57,15 @@ class Manipulator:
         try:
             # Updating garbage grasp status, based on the Simulation's result.
             if sim_collected:
-                logger.info(f"Manipulator -> update_garbage_grasp(): Garbage is grasped")
+                logger.debug(f"Manipulator -> update_garbage_grasp(): Garbage is grasped")
                 self.garbage_grasped = True
                 return
 
-            logger.info(f"Manipulator -> update_garbage_grasp(): ENDS, Garbage is not grasped.")
+            logger.debug(f"Manipulator -> update_garbage_grasp(): ENDS, Garbage is not grasped.")
             return
 
 
         except Exception as e:
-            logger.info(f"Error occurred in Manipulator -> update_garbage_grasp(), error: {e}")
+            logger.error(f"Error occurred in Manipulator -> update_garbage_grasp(), error: {e}")
             raise e
 

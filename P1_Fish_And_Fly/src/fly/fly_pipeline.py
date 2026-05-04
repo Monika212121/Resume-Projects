@@ -58,7 +58,7 @@ class FlyPipeline:
 
 
         except Exception as e:
-            logger.info(f"Error occurred in FlyPipeline -> initiate(), error: {e}")
+            logger.error(f"Error occurred in FlyPipeline -> initiate(), error: {e}")
             raise e
 
 
@@ -75,7 +75,7 @@ class FlyPipeline:
         
 
         except Exception as e:
-            logger.info(f"Error occurred in FlyPipeline -> terminate(), error: {e}")
+            logger.error(f"Error occurred in FlyPipeline -> terminate(), error: {e}")
             raise e
 
 
@@ -113,7 +113,7 @@ class FlyPipeline:
         
 
         except Exception as e:
-            logger.info(f"Error occurred in FlyPipeline -> tick(), error: {e}")
+            logger.error(f"Error occurred in FlyPipeline -> tick(), error: {e}")
             raise e
         
 
@@ -148,7 +148,7 @@ class FlyPipeline:
 
 
         except Exception as e:
-            logger.info(f"Error occurred in FlyPipeline -> tick(), error: {e}")
+            logger.error(f"Error occurred in FlyPipeline -> tick(), error: {e}")
             raise e
         
 

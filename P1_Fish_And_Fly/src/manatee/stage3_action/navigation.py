@@ -43,7 +43,7 @@ class BoundaryNavigator:
 
     def generate_boundary_loop(self) -> List[Waypoint]:
         try:
-            logger.info(f"BoundaryNavigator -> generate_boundary_loop(): STARTS")
+            logger.debug(f"BoundaryNavigator -> generate_boundary_loop(): STARTS")
 
             path = [
                 Waypoint(self.min_x, self.min_y, self.z),
@@ -52,12 +52,12 @@ class BoundaryNavigator:
                 Waypoint(self.min_x, self.max_y, self.z)
             ]
 
-            logger.info(f"BoundaryNavigator -> generate_boundary_loop(): ENDS")
+            logger.debug(f"BoundaryNavigator -> generate_boundary_loop(): ENDS")
             return path
 
 
         except Exception as e:
-            logger.info(f"Error occurred in BoundaryNavigator -> generate_boundary_loop(), error: {e}")
+            logger.error(f"Error occurred in BoundaryNavigator -> generate_boundary_loop(), error: {e}")
             raise e
 
 
@@ -83,7 +83,7 @@ class BoundaryNavigator:
 
 
         except Exception as e:
-            logger.info(f"Error occurred in BoundaryNavigator -> step_boundary_edge(), error: {e}")
+            logger.error(f"Error occurred in BoundaryNavigator -> step_boundary_edge(), error: {e}")
             raise e
 
 
@@ -134,7 +134,7 @@ class BoundaryNavigator:
 
 
         except Exception as e:
-            logger.info(f"Error occurred in BoundaryNavigator -> get_next_position_in_boundary_path(), error: {e}")
+            logger.error(f"Error occurred in BoundaryNavigator -> get_next_position_in_boundary_path(), error: {e}")
             raise e
 
 
@@ -145,12 +145,12 @@ class BoundaryNavigator:
             if self.current_position == target_position:
                 is_reached = True
             
-            logger.info(f"BoundaryNavigator -> reached_destination(): ENDS, is_reached: {is_reached}") 
+            logger.info(f"BoundaryNavigator -> is_reached_destination(): ENDS, is_reached: {is_reached}") 
             return is_reached
 
 
         except Exception as e:
-            logger.info(f"Error occurred in BoundaryNavigator -> reached_destination(), error: {e}")
+            logger.error(f"Error occurred in BoundaryNavigator -> is_reached_destination(), error: {e}")
             raise e
         
     
@@ -182,12 +182,12 @@ class BoundaryNavigator:
             else:
                 projected_point = Waypoint(x, self.max_y, self.z)
          
-            logger.info(f"BoundaryNavigator -> get_boundary_projection(), projected_point: {projected_point}")
+            logger.debug(f"BoundaryNavigator -> get_boundary_projection(), projected_point: {projected_point}")
             return projected_point
 
 
         except Exception as e:
-            logger.info(f"Error occurred in BoundaryNavigator -> get_boundary_projection(), error: {e}")
+            logger.error(f"Error occurred in BoundaryNavigator -> get_boundary_projection(), error: {e}")
             raise e
         
 
@@ -199,7 +199,7 @@ class BoundaryNavigator:
 
     def get_linear_step_to_destination(self, destination: Waypoint) -> Waypoint:
         try:
-            logger.info(f"BoundaryNavigator -> get_linear_step_to_destination(): STARTS")
+            logger.debug(f"BoundaryNavigator -> get_linear_step_to_destination(): STARTS")
 
             # Calculate direction vectors (3D), for DIRECT destination
             dx = destination.x - self.current_position.x
@@ -216,7 +216,7 @@ class BoundaryNavigator:
                 # Snap to the current target first
                 self.current_position = destination   
                 
-                logger.info(f"BoundaryNavigator -> get_linear_step_to_destination(): Destination reached") 
+                logger.debug(f"BoundaryNavigator -> get_linear_step_to_destination(): Destination reached") 
                 return destination                                                                                        
     
             # Normalize directions
@@ -232,10 +232,10 @@ class BoundaryNavigator:
             # New position for Fish machine
             new_position = Waypoint(new_x, new_y, new_z)            
 
-            logger.info(f"BoundaryNavigator -> get_linear_step_to_destination(): ENDS, new_position: {new_position}")
+            logger.debug(f"BoundaryNavigator -> get_linear_step_to_destination(): ENDS, new_position: {new_position}")
             return new_position
 
 
         except Exception as e:
-            logger.info(f"Error occurred in BoundaryNavigator -> get_linear_step_to_destination(), error: {e}")
+            logger.error(f"Error occurred in BoundaryNavigator -> get_linear_step_to_destination(), error: {e}")
             raise e

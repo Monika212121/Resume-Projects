@@ -28,19 +28,22 @@ class CommonVisionPipeline:
         # Object tracking
         self.detection_model = self.detector.detection_model
         self.tracker = ObjectTracker(model= self.detection_model, infer_cfg= self.infer_config, tracker_cfg= self.tracker_config)
-        logger.info(f"CommonVisionPipeline -> init()")
+
 
 
 
     def ensure_model_ready(self) -> None:
         try: 
-            logger.info("VisionPipeline -> ensure_model_ready()")
+            logger.debug("CommonVisionPipeline -> ensure_model_ready(): STARTS")
 
             if not os.path.exists(self.model_weights_path):                                                 # check if `weights/best.pt` file exists
                 logger.warning("Weights not found. Training model..............")
                 self.model_trainer.train_yolo_model()
+            
+            logger.debug("CommonVisionPipeline -> ensure_model_ready(): ENDS, YOLO model trained")
             return
 
+
         except Exception as e:
-            logger.info(f"Error occurred in VisionPipeline -> ensure_model_ready(), error: {e}") 
+            logger.info(f"Error occurred in CommonVisionPipeline -> ensure_model_ready(), error: {e}") 
             raise e

@@ -24,24 +24,24 @@ class PathNavigator:
         self.speeds: Speeds  = self.cfg.speeds
         self.sweep_step: float = self.cfg.sweep_step
         self.current_position: Waypoint = self.cfg.start_point
-        self.reach_threshold: float = self.cfg.reach_threshold                        # To check target is in reach or not for Fish machine
+        self.reach_threshold: float = self.cfg.reach_threshold                                              # To check target is in reach or not for Fish machine
 
         self.path: List[Waypoint] = []
-        self.current_index: int = 0                                                         # No. of waypoints crossed in the set path.
+        self.current_index: int = 0                                                                         # No. of waypoints crossed in the set path.
         self.curr_speed: float = self.speeds.surface
         self.dt = 1.0
         self.paused: bool = False
 
-        self.trajectory: list[Dict[Any, Any]] = []
         self.step_count: int = 0
+        self.trajectory: list[Dict[Any, Any]] = []
         self.last_fish_position: Waypoint = Waypoint(0.0, 0.0, 0.0)                           
-        self.curr_fish_direction: int = 1                                                   # Maintaining a direction flag for garbage object simulation
+        self.curr_fish_direction: int = 1                                                                   # Maintaining a direction flag for garbage object simulation
 
 
 
     def set_path(self, depth: float, start_position: Waypoint):
         try:
-            logger.info(f"PathNavigator -> set_path(): STARTS, depth: {depth}")
+            logger.debug(f"PathNavigator -> set_path(): STARTS, depth: {depth}")
 
             # Generate SURFACE path once.
             if not self.path or len(self.path) == 0:
@@ -58,15 +58,15 @@ class PathNavigator:
             # Updating path parameters for the current operation level.
             self.path = active_path
             self.current_position = start_position
-            self.current_index = 0                                                      # to avoid index error if path is not generated.
+            self.current_index = 0                                                                          # to avoid index error if path is not generated.
             self.paused = False
 
-            logger.info(f"PathNavigator -> set_path(): ENDS, active path: {self.path}")
+            logger.debug(f"PathNavigator -> set_path(): ENDS, active path: {self.path}")
             return 
 
 
         except Exception as e:
-            logger.info(f"Error occurred in PathNavigator -> set_path(), error: {e}")
+            logger.error(f"Error occurred in PathNavigator -> set_path(), error: {e}")
             raise e
 
 
@@ -96,7 +96,7 @@ class PathNavigator:
         :rtype: List[Waypoint]
         """
         try:
-            logger.info(f"PathNavigator -> generate_lawn_mower_path(): STARTS, cleaning_depth: {cleaning_depth}")
+            logger.debug(f"PathNavigator -> generate_lawn_mower_path(): STARTS, cleaning_depth: {cleaning_depth}")
             
             path: List[Waypoint] = []
 
@@ -125,57 +125,54 @@ class PathNavigator:
                 direction *= -1                 
                 
 
-            logger.info(f"PathNavigator -> generate_lawn_mower_path(): ENDS")
+            logger.debug(f"PathNavigator -> generate_lawn_mower_path(): ENDS")
             return path
 
 
         except Exception as e:
-            logger.info(f"Error occurred in PathNavigator -> generate_lawnmower_path(), error: {e}")
+            logger.error(f"Error occurred in PathNavigator -> generate_lawnmower_path(), error: {e}")
             raise e
 
 
 
     def pause(self):
         try:
-            logger.info(f"PathNavigator -> pause(): STARTS")
             self.paused = True
-            logger.info(f"PathNavigator -> pause(): ENDS")
 
 
         except Exception as e:
-            logger.info(f"Error occurred in PathNavigator -> pause(), error: {e}")
+            logger.error(f"Error occurred in PathNavigator -> pause(), error: {e}")
             raise e
 
 
     
     def resume(self):
         try:
-            logger.info(f"PathNavigator -> resume(): STARTS")
             self.paused = False
-            logger.info(f"PathNavigator -> resume(): ENDS")
 
 
         except Exception as e:
-            logger.info(f"Error occurred in PathNavigator -> resume(), error: {e}")
+            logger.error(f"Error occurred in PathNavigator -> resume(), error: {e}")
             raise e
         
 
 
 
-    def target_is_near(self, world_obj: FishFrameObject) -> bool:
+    def target_is_near(self, object: FishFrameObject) -> bool:
         """
         Decide if target is close enough to execute manipulation.
         """
         try:
-            logger.info(f"PathNavigator -> target_is_near(): STARTS, world object: {world_obj}")
+            logger.debug(f"PathNavigator -> target_is_near(): STARTS, fish frame object: {object}")
 
-            target_is_near = world_obj.relative_distance <= self.reach_threshold
+            target_is_near = object.relative_distance <= self.reach_threshold
 
-            logger.info(f"PathNavigator -> target_is_near(): ENDS, target_is_near: {target_is_near}")
+            logger.debug(f"PathNavigator -> target_is_near(): ENDS, target_is_near: {target_is_near}")
             return target_is_near
         
+
         except Exception as e:
-            logger.info(f"Error occurred in PathNavigator -> target_is_near(), error: {e}")
+            logger.error(f"Error occurred in PathNavigator -> target_is_near(), error: {e}")
             raise e
     
 
@@ -195,11 +192,11 @@ class PathNavigator:
         :rtype: bool
         """
         try:
-            logger.info(f"PathNavigator -> get_next_position(): STARTS")
+            logger.debug(f"PathNavigator -> get_next_position_in_path(): STARTS")
          
             # 1. Recognize the next target waypoint in the set path.
             target_waypoint = self.path[self.current_index]
-            logger.info(f"PathNavigator -> get_next_position(): current index: {self.current_index}, current position: {self.current_position}, target position: {target_waypoint}")
+            logger.info(f"PathNavigator -> get_next_position_in_path(): current index: {self.current_index}, current position: {self.current_position}, target position: {target_waypoint}")
 
             # 2. Calculate direction vectors (3D)
             dx = target_waypoint.x - self.current_position.x
@@ -208,7 +205,7 @@ class PathNavigator:
 
             # Distance between current position and the next target waypoint(not new position)
             distance = math.sqrt(dx*dx + dy*dy + dz*dz)
-            logger.info(f"PathNavigator -> get_next_position(): Distance between current position and the next target waypoint: {distance}")
+            logger.info(f"PathNavigator -> get_next_position_in_path(): Distance between current position and next target waypoint: {distance}")
 
             # 3. Compute step distance, using formula [distance = speed * time]
             step_distance = self.curr_speed * self.dt
@@ -225,7 +222,7 @@ class PathNavigator:
 
                 # Check if path is finished, then return the last current position / target waypoint, to avoid index out of range error.
                 if self.path_is_finished():                                                                 # refer ACTION_NOTES.md(9)
-                    logger.info(f"PathNavigator -> get_next_position(): Current set path is finished, return current position")
+                    logger.info(f"PathNavigator -> get_next_position_in_path(): Current set path is finished, returning current position")
                     return self.current_position                            
 
                 # If current path is not finished, then set the next waypoint in the path as target.
@@ -237,7 +234,7 @@ class PathNavigator:
                 dz = target_waypoint.z - self.current_position.z
 
                 distance = math.sqrt(dx*dx + dy*dy + dz*dz)
-                logger.info(f"PathNavigator -> get_next_position(): New distance between current and target: {distance}")
+                logger.info(f"PathNavigator -> get_next_position_in_path(): New distance between current and target: {distance}")
 
 
             # 5. Normalize directions
@@ -261,14 +258,14 @@ class PathNavigator:
         
         
         except Exception as e:
-            logger.info(f"Error occurred in PathNavigator -> get_next_position(), error: {e}")
+            logger.error(f"Error occurred in PathNavigator -> get_next_position_in_path(), error: {e}")
             raise e
 
 
 
     def path_is_finished(self) -> bool:
         try:
-            logger.info(f"PathNavigator -> path_is_finished(): STARTS")
+            logger.debug(f"PathNavigator -> path_is_finished(): STARTS")
 
             path_is_finished = self.current_index >= len(self.path)
 
@@ -277,7 +274,7 @@ class PathNavigator:
         
 
         except Exception as e:
-            logger.info(f"Error occurred in PathNavigator -> path_is_finished(), error: {e}")
+            logger.error(f"Error occurred in PathNavigator -> path_is_finished(), error: {e}")
             raise e
 
      
@@ -285,7 +282,7 @@ class PathNavigator:
     # NOTE: Can be refactored into TrajectoryLogger service in future
     def log_trajectory_point(self):
         try:
-            logger.info(f"PathNavigator -> log_trajectory_point(): STARTS")
+            logger.debug(f"PathNavigator -> log_trajectory_point(): STARTS")
 
             # Determining the operation level of the Fish machine
             operation_level = "surface" if self.current_position.z >= 0 else "underwater"
@@ -296,12 +293,12 @@ class PathNavigator:
                 "step_taken": self.step_count
             })
 
-            logger.info(f"PathNavigator -> log_trajectory_point(): ENDS")
+            logger.debug(f"PathNavigator -> log_trajectory_point(): ENDS")
             return
 
 
         except Exception as e:
-            logger.info(f"Error occurred in PathNavigator -> log_trajectory_point(), error: {e}")
+            logger.error(f"Error occurred in PathNavigator -> log_trajectory_point(), error: {e}")
             raise e
         
 
@@ -309,7 +306,7 @@ class PathNavigator:
 
     def update_fish_direction(self, fish_delta_x: float) -> None:
         try:
-            logger.info(f"PathNavigator -> update_fish_direction(): STARTS, curr_pos: {self.current_position}, last_pos: {self.last_fish_position}")
+            logger.debug(f"PathNavigator -> update_fish_direction(): STARTS, curr_pos: {self.current_position}, last_pos: {self.last_fish_position}")
 
             # Updating current direction of Fish machine
             logger.info(f"PathNavigator -> update_fish_direction(), fish_delta_x: {fish_delta_x}")
@@ -337,6 +334,7 @@ class PathNavigator:
 
 
         except Exception as e:
+            logger.error(f"Error occurred in PathNavigator -> update_fish_direction(), error: {e}")
             raise e
 
 
@@ -347,19 +345,19 @@ class PathNavigator:
             if self.current_position == target_position:
                 is_reached = True
             
-            logger.info(f"PathNavigator -> reached_destination(): ENDS, is_reached: {is_reached}") 
+            logger.info(f"PathNavigator -> is_reached_destination(): ENDS, is_reached: {is_reached}") 
             return is_reached
 
 
         except Exception as e:
-            logger.info(f"Error occurred in PathNavigator -> reached_destination(), error: {e}")
+            logger.error(f"Error occurred in PathNavigator -> is_reached_destination(), error: {e}")
             raise e
         
 
 
     def get_linear_step_to_destination(self, destination: Waypoint) -> Waypoint:
         try:
-            logger.info(f"PathNavigator -> get_linear_step_to_destination(): STARTS")
+            logger.debug(f"PathNavigator -> get_linear_step_to_destination(): STARTS")
 
             # 1. Calculate direction vectors (3D), for DIRECT destination
             dx = destination.x - self.current_position.x
@@ -368,7 +366,7 @@ class PathNavigator:
 
             # Distance between current position and the destination
             distance = math.sqrt(dx*dx + dy*dy + dz*dz)
-            logger.info(f"PathNavigator -> get_linear_step_to_destination(): Distance between current position and the destination: {distance}")
+            logger.info(f"PathNavigator -> get_linear_step_to_destination(): Distance between current position and destination: {distance}")
 
             # 2. Compute step distance, using formula [distance = speed * time]
             step_distance = self.curr_speed * self.dt
@@ -402,5 +400,5 @@ class PathNavigator:
 
 
         except Exception as e:
-            logger.info(f"Error occurred in PathNavigator -> get_linear_step_to_destination(), error: {e}")
+            logger.error(f"Error occurred in PathNavigator -> get_linear_step_to_destination(), error: {e}")
             raise e

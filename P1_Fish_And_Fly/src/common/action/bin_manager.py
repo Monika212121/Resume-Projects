@@ -30,7 +30,7 @@ class BinManager:
         :rtype: bool
         """
         try: 
-            logger.info(f"BinManager -> add_garbage(): STARTS, curr load: {self.current_load}")
+            logger.debug(f"BinManager -> add_garbage(): STARTS, curr load: {self.current_load}")
 
             self.current_load += load_added
 
@@ -39,7 +39,7 @@ class BinManager:
             
      
         except Exception as e:
-            logger.info(f"Error occurred in BinManager -> add_garbage(), error: {e}")
+            logger.error(f"Error occurred in BinManager -> add_garbage(), error: {e}")
             raise e
 
 
@@ -53,16 +53,16 @@ class BinManager:
         :rtype: float
         """
         try: 
-            logger.info(f"BinManager -> usage_ratio(): STARTS")
+            logger.debug(f"BinManager -> usage_ratio(): STARTS")
 
             usage_ratio = self.current_load / self.capacity
 
-            logger.info(f"BinManager -> usage_ratio(): ENDS, usage_ratio: {usage_ratio}")
+            logger.debug(f"BinManager -> usage_ratio(): ENDS, usage_ratio: {usage_ratio}")
             return usage_ratio
 
 
         except Exception as e:
-            logger.info(f"Error occurred in BinManager -> usage_ratio(), error: {e}")
+            logger.error(f"Error occurred in BinManager -> usage_ratio(), error: {e}")
             raise e
 
         
@@ -76,7 +76,7 @@ class BinManager:
         :rtype: bool
         """
         try: 
-            logger.info(f"BinManager -> is_bin_full(): STARTS, current load: {self.current_load}")
+            logger.debug(f"BinManager -> is_bin_full(): STARTS, current load: {self.current_load}")
 
             reached_max_capacity = self.usage_ratio() >= self.alert_threshold
             if reached_max_capacity:
@@ -84,12 +84,12 @@ class BinManager:
                 logger.info(f"BinMananger -> is_bin_full(), Bin reached its max capacity. Needs to unload.")
 
 
-            logger.info(f"BinManager -> is_bin_full(): ENDS")
+            logger.debug(f"BinManager -> is_bin_full(): ENDS")
             return reached_max_capacity
 
 
         except Exception as e:
-            logger.info(f"Error occurred in BinManager -> is_bin_full(), error: {e}")
+            logger.error(f"Error occurred in BinManager -> is_bin_full(), error: {e}")
             raise e
         
 
@@ -103,12 +103,12 @@ class BinManager:
         :rtype: bool
         """
         try:
-            logger.info(f"BinManager -> reset_bin(): STARTS, before load: {self.current_load}")
+            logger.debug(f"BinManager -> reset_bin(): STARTS, before load: {self.current_load}")
             self.current_load = 0
-            logger.info(f"BinManager -> reset_bin(): ENDS, after load: {self.current_load}")
+            logger.debug(f"BinManager -> reset_bin(): ENDS, after load: {self.current_load}")
             return True
 
 
         except Exception as e:
-            logger.info(f"Error occurred in BinManager -> reset_bin(), error: {e}")
+            logger.error(f"Error occurred in BinManager -> reset_bin(), error: {e}")
             raise e

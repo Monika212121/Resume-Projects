@@ -30,6 +30,7 @@ class ObjectManager():
         self._last_blink_time = time.time()
 
 
+
     def exists(self, object_id: int) -> bool:
         try:
             object_exists = object_id in self.object_bodyID
@@ -37,7 +38,7 @@ class ObjectManager():
 
 
         except Exception as e:
-            logger.info(f"Error occurred in ObjectManager -> exists(), error: {e}")
+            logger.error(f"Error occurred in ObjectManager -> exists(), error: {e}")
             raise e
         
 
@@ -47,22 +48,23 @@ class ObjectManager():
             body_id = self.object_bodyID.get(track_id)
             return body_id
 
+
         except Exception as e:
-            logger.info(f"Error occurred in ObjectManager -> get_body_id(), error: {e}")
+            logger.error(f"Error occurred in ObjectManager -> get_body_id(), error: {e}")
             raise e
 
 
 
     def spawn_objects(self, objects: List[FishFrameObject], fish_info: FishNavigationInfo) -> None:
         try:
-            logger.info(f"SimulationBridge -> spawn_objects(): STARTS, n(objects): {len(objects)}")
+            logger.debug(f"SimulationBridge -> spawn_objects(): STARTS, n(objects): {len(objects)}")
 
             self.fish_navigation_info = fish_info
 
             # Spawning all category objects
             for object in objects:
                 if self.exists(object.track_id):
-                    logger.info(f"SimulationBridge -> spawn_objects(): This object of track_id: {object.track_id} already exists")
+                    logger.debug(f"SimulationBridge -> spawn_objects(): This object of track_id: {object.track_id} already exists")
                     continue
 
                 # If the object is new in simulation, create it in simulation world
@@ -72,19 +74,19 @@ class ObjectManager():
                 body_id = self.spawn_body(track_id = object.track_id, class_name = object.class_name, entity_role= object.entity_role, spawn_position = safe_spawn_position)
 
 
-            logger.info(f"SimulationBridge -> spawn_objects(): ENDS")
+            logger.debug(f"SimulationBridge -> spawn_objects(): ENDS")
             return
 
 
         except Exception as e:
-            logger.info(f"Error occurred in SimulationBridge -> spawn_objects(), error: {e}")
+            logger.error(f"Error occurred in SimulationBridge -> spawn_objects(), error: {e}")
             raise e 
 
 
 
     def get_safe_spawn_position(self, object: FishFrameObject) -> Tuple[float, float, float]:
         try:
-            logger.info(f"ObjectManager -> get_safe_spawn_position(): STARTS, object: {object}")
+            logger.debug(f"ObjectManager -> get_safe_spawn_position(): STARTS, object: {object}")
 
             # Calculate perception mirroring based safe position
             spawn_position = self.get_spawn_position(rel_obj_pos_fish_frame = object.relative_position)
@@ -95,12 +97,12 @@ class ObjectManager():
             # NOTE: Changing position data type, because in pybullet, Spawn function takes position in tuple(float, float, float)
             safe_spawn_pos: Tuple[float, float, float] = (safe_spawn_position.x, safe_spawn_position.y, safe_spawn_position.z) 
 
-            logger.info(f"ObjectManager -> get_safe_spawn_position(), safe_pos: {safe_spawn_position}")
+            logger.debug(f"ObjectManager -> get_safe_spawn_position(), safe_pos: {safe_spawn_position}")
             return safe_spawn_pos
 
 
         except Exception as e:
-            logger.info(f"Error occurred in ObjectManager -> get_safe_spawn_position(), error: {e}")
+            logger.error(f"Error occurred in ObjectManager -> get_safe_spawn_position(), error: {e}")
             raise e
 
 
@@ -131,13 +133,13 @@ class ObjectManager():
                 z= fish_curr_pos.z + rel_obj_pos_world_frame.z
             )
 
-            logger.info(f"fish_curr_pos: {fish_curr_pos}, rel_pos_fish_frame: {rel_obj_pos_fish_frame}, rel_pos_world_frame: {rel_obj_pos_world_frame}")
-            logger.info(f"ObjectManager -> get_spawn_position(), spawn_world_position: {spawn_world_position}")
+            logger.debug(f"fish_curr_pos: {fish_curr_pos}, rel_pos_fish_frame: {rel_obj_pos_fish_frame}, rel_pos_world_frame: {rel_obj_pos_world_frame}")
+            logger.debug(f"ObjectManager -> get_spawn_position(), spawn_world_position: {spawn_world_position}")
             return spawn_world_position
 
 
         except Exception as e:
-            logger.info(f"Error occurred in ObjectManager -> generate_safe_zone_position(), error: {e}")
+            logger.debug(f"Error occurred in ObjectManager -> generate_safe_zone_position(), error: {e}")
             raise e
 
 
@@ -185,12 +187,12 @@ class ObjectManager():
             if entity_role == EntityRole.NAVIGATION_HAZARD and class_name == "dangerous_animal":
                 self.hazard_body_ids.append(new_body_id)                                                # for blinking
 
-            logger.info(f"ObjectManager -> spawn_body(): ENDS, meta_data: {self.objects_meta[track_id]}")
+            logger.debug(f"ObjectManager -> spawn_body(): ENDS, meta_data: {self.objects_meta[track_id]}")
             return new_body_id
 
 
         except Exception as e:
-            logger.info(f"Error occurred in ObjectManager -> spawn_body(), error: {e}")
+            logger.error(f"Error occurred in ObjectManager -> spawn_body(), error: {e}")
             raise e
         
 
@@ -213,7 +215,7 @@ class ObjectManager():
 
                 # NOTE: lifetime = -1 means, permanent object, they will be spawned for whole lifetime of the simulation
                 if lifetime < 0:
-                    logger.info(f"update_object_lifecycle(): This is a static object, skipped de-spawning.")
+                    logger.debug(f"update_object_lifecycle(): This is a static object, skipped de-spawning.")
                     continue
 
                 object_age = current_time - spawn_time
@@ -239,7 +241,7 @@ class ObjectManager():
 
 
         except Exception as e:
-            logger.info(f"Error occurred in ObjectManager -> update_object_lifecycle(), error: {e}")
+            logger.error(f"Error occurred in ObjectManager -> update_object_lifecycle(), error: {e}")
             raise e
         
 
@@ -248,7 +250,7 @@ class ObjectManager():
         try:
             # If no hazard exist, leave immediately
             if not self.hazard_body_ids:
-                logger.info("No hazard object is present currently")
+                logger.debug("No hazard object is present currently")
                 return
             
             now = time.time()
@@ -267,26 +269,26 @@ class ObjectManager():
 
 
         except Exception as e:
-            logger.info(f"Error occurred in update_hazard_blinking(), error: {e}")
+            logger.error(f"Error occurred in update_hazard_blinking(), error: {e}")
             raise e
 
 
 
     def mark_collected(self, track_id: int):
         try:
-            logger.info(f"ObjectManager -> mark_collected(): STARTS, before updation: {self.objects_meta.get(track_id)}")
+            logger.debug(f"ObjectManager -> mark_collected(): STARTS, before updation: {self.objects_meta.get(track_id)}")
 
             garbage_meta_data = self.objects_meta.get(track_id)
             if garbage_meta_data is None:
-                logger.info(f"mark_collected(): Garbage does not exist of track_id: {track_id}")
+                logger.error(f"mark_collected(): Garbage does not exist of track_id: {track_id}")
                 return
 
             garbage_meta_data.status = ActionStatus.COLLECTED
 
-            logger.info(f"ObjectManager -> mark_collected(): ENDS, after updation: {self.objects_meta.get(track_id)}")
+            logger.debug(f"ObjectManager -> mark_collected(): ENDS, after updation: {self.objects_meta.get(track_id)}")
             return
 
 
         except Exception as e:
-            logger.info(f"Error occurred in update_hazard_blinking(), error: {e}")
+            logger.error(f"Error occurred in update_hazard_blinking(), error: {e}")
             raise e
