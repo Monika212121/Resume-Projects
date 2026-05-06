@@ -27,155 +27,197 @@ class PyBulletWorld:
 
 
     def connect(self, enable_GUI: bool = False):
-        if self.connected:
+        try: 
+            logger.debug(f"PybulletWorld -> connect(): STARTS")
+
+            if self.connected:
+                return
+
+            if enable_GUI:
+                self.physics_client_id = p.connect(p.GUI)
+            else:
+                self.physics_client_id = p.connect(p.DIRECT)
+
+            
+            p.setGravity(0, 0, 0)
+
+            
+            # Create water body workspace
+            self.create_water_cuboid()
+            '''
+            # Lock camera ONCE
+            p.resetDebugVisualizerCamera(
+                cameraDistance=12,
+                cameraYaw=45,
+                cameraPitch=-30,
+                cameraTargetPosition=[0, 0, 0],
+            )
+            '''
+
+            # Optional: hide noisy GUI panels
+            p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+            p.configureDebugVisualizer(p.COV_ENABLE_RGB_BUFFER_PREVIEW, 0)
+            p.configureDebugVisualizer(p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0)
+            p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, 0)
+
+
+            # Crate Head Quarter of the workspace
+            self.spawn_headquarter(position= (0.0, 20.10, 0.0))
+
+            # Create dump points on the boundary of the workspace
+            self.spawn_dump_points()
+
+            self.connected = True
+
+            logger.debug(f"PybulletWorld -> connect(): ENDS")
             return
 
-        if enable_GUI:
-            self.physics_client_id = p.connect(p.GUI)
-        else:
-            self.physics_client_id = p.connect(p.DIRECT)
-
         
-        p.setGravity(0, 0, 0)
-
-        
-        # Create water body workspace
-        self.create_water_cuboid()
-        '''
-        # 🔒 Lock camera ONCE
-        p.resetDebugVisualizerCamera(
-            cameraDistance=12,
-            cameraYaw=45,
-            cameraPitch=-30,
-            cameraTargetPosition=[0, 0, 0],
-        )
-        '''
-
-        # Optional: hide noisy GUI panels
-        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
-        p.configureDebugVisualizer(p.COV_ENABLE_RGB_BUFFER_PREVIEW, 0)
-        p.configureDebugVisualizer(p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0)
-        p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, 0)
-
-
-        # Crate Head Quarter of the workspace
-        self.spawn_headquarter(position= (0.0, 20.10, 0.0))
-
-        # Create dump points on the boundary of the workspace
-        self.spawn_dump_points()
-
-        self.connected = True
-        return
+        except Exception as e:
+            logger.error(f"Error occurred in PybulletWorld -> connect(), error: {e}")
+            raise e
 
 
 
     def update_camera_follow_fish(self, fish_pose: Waypoint):
-        fx, fy, fz = fish_pose.x, fish_pose.y, fish_pose.z
+        try: 
+            logger.debug(f"PybulletWorld -> update_camera_follow_fish(): STARTS")
 
-        p.resetDebugVisualizerCamera(
-            cameraDistance=30,                                                                              # wide enough to see garbage
-            cameraYaw=45,
-            cameraPitch=-35,
-            cameraTargetPosition=[fx, fy, fz],
-        )
+            fx, fy, fz = fish_pose.x, fish_pose.y, fish_pose.z
 
-        return
-        
+            p.resetDebugVisualizerCamera(
+                cameraDistance=30,                                                                              # wide enough to see garbage
+                cameraYaw=45,
+                cameraPitch=-35,
+                cameraTargetPosition=[fx, fy, fz],
+            )
+
+            logger.debug(f"PybulletWorld -> update_camera_follow_fish(): ENDS")
+            return
+
+
+        except Exception as e:
+            logger.error(f"Error occurred in PybulletWorld -> update_camera_follow_fish(), error: {e}")
+            raise e
+
 
 
     def shutdown(self):
-        if self.connected:
-            p.disconnect()
-            self.connected = False
+        try: 
+            if self.connected:
+                p.disconnect()
+                self.connected = False
+            
+            return
         
-        return
 
+        except Exception as e:
+            logger.error(f"Error occurred in PybulletWorld -> update_camera_follow_fish(), error: {e}")
+            raise e
+        
 
 
     def create_water_cuboid(self):
-        logger.info(f"PyBulletWorld -> create_water_cuboid(): STARTS")
+        try: 
+            logger.debug(f"PyBulletWorld -> create_water_cuboid(): STARTS")
 
-        thickness = 0.1
+            thickness = 0.1
 
-        X_MIN, X_MAX = WORKSPACE_BOUNDS["x_min"], WORKSPACE_BOUNDS["x_max"]
-        Y_MIN, Y_MAX = WORKSPACE_BOUNDS["y_min"], WORKSPACE_BOUNDS["y_max"]
-        Z_MIN, Z_MAX = WORKSPACE_BOUNDS["z_min"], WORKSPACE_BOUNDS["z_max"]
+            X_MIN, X_MAX = WORKSPACE_BOUNDS["x_min"], WORKSPACE_BOUNDS["x_max"]
+            Y_MIN, Y_MAX = WORKSPACE_BOUNDS["y_min"], WORKSPACE_BOUNDS["y_max"]
+            Z_MIN, Z_MAX = WORKSPACE_BOUNDS["z_min"], WORKSPACE_BOUNDS["z_max"]
 
-        x_mid = (X_MIN + X_MAX) / 2
-        y_mid = (Y_MIN + Y_MAX) / 2
-        z_mid = (Z_MIN + Z_MAX) / 2
+            x_mid = (X_MIN + X_MAX) / 2
+            y_mid = (Y_MIN + Y_MAX) / 2
+            z_mid = (Z_MIN + Z_MAX) / 2
 
-        x_half = (X_MAX - X_MIN) / 2
-        y_half = (Y_MAX - Y_MIN) / 2
-        z_half = (Z_MAX - Z_MIN) / 2
+            x_half = (X_MAX - X_MIN) / 2
+            y_half = (Y_MAX - Y_MIN) / 2
+            z_half = (Z_MAX - Z_MIN) / 2
 
-        # Bottom
-        self.create_wall(
-            [x_half, y_half, thickness],
-            [x_mid, y_mid, Z_MIN - thickness]
-        )
+            # Bottom
+            self.create_wall(
+                [x_half, y_half, thickness],
+                [x_mid, y_mid, Z_MIN - thickness]
+            )
 
-        # Top
-        self.create_wall(
-            [x_half, y_half, thickness],
-            [x_mid, y_mid, Z_MAX + thickness]
-        )
+            # Top
+            self.create_wall(
+                [x_half, y_half, thickness],
+                [x_mid, y_mid, Z_MAX + thickness]
+            )
 
-        # X min
-        self.create_wall(
-            [thickness, y_half, z_half],
-            [X_MIN - thickness, y_mid, z_mid]
-        )
+            # X min
+            self.create_wall(
+                [thickness, y_half, z_half],
+                [X_MIN - thickness, y_mid, z_mid]
+            )
 
-        # X max
-        self.create_wall(
-            [thickness, y_half, z_half],
-            [X_MAX + thickness, y_mid, z_mid]
-        )
+            # X max
+            self.create_wall(
+                [thickness, y_half, z_half],
+                [X_MAX + thickness, y_mid, z_mid]
+            )
 
-        # Y min
-        self.create_wall(
-            [x_half, thickness, z_half],
-            [x_mid, Y_MIN - thickness, z_mid]
-        )
+            # Y min
+            self.create_wall(
+                [x_half, thickness, z_half],
+                [x_mid, Y_MIN - thickness, z_mid]
+            )
 
-        # Y max
-        self.create_wall(
-            [x_half, thickness, z_half],
-            [x_mid, Y_MAX + thickness, z_mid]
-        )
+            # Y max
+            self.create_wall(
+                [x_half, thickness, z_half],
+                [x_mid, Y_MAX + thickness, z_mid]
+            )
 
-        logger.info(f"PyBulletWorld -> create_water_cuboid(): ENDS")
-        return
-    
+            logger.debug(f"PyBulletWorld -> create_water_cuboid(): ENDS")
+            return
+        
+        
+        except Exception as e:
+            logger.error(f"Error occurred in PybulletWorld -> create_water_cuboid(), error: {e}")
+            raise e
+
 
 
     def create_wall(self, half_extents: List[float], position: List[float]):
-        visual = p.createVisualShape(
-            p.GEOM_BOX,
-            halfExtents=half_extents,
-            rgbaColor=[0, 0.5, 1, 0.15],                                                                    # transparent water blue
-        )
+        try: 
+            logger.debug(f"PyBulletWorld -> create_wall(): STARTS")
 
-        collision = p.createCollisionShape(
-            p.GEOM_BOX,
-            halfExtents=half_extents,
-        )
+            visual = p.createVisualShape(
+                p.GEOM_BOX,
+                halfExtents=half_extents,
+                rgbaColor=[0, 0.5, 1, 0.15],                                                                    # transparent water blue
+            )
 
-        p.createMultiBody(
-            baseMass=0,
-            baseCollisionShapeIndex=collision,
-            baseVisualShapeIndex=visual,
-            basePosition=position,
-        )
+            collision = p.createCollisionShape(
+                p.GEOM_BOX,
+                halfExtents=half_extents,
+            )
 
-        return
+            p.createMultiBody(
+                baseMass=0,
+                baseCollisionShapeIndex=collision,
+                baseVisualShapeIndex=visual,
+                basePosition=position,
+            )
+
+            logger.debug(f"PyBulletWorld -> create_wall(): ENDS")
+            return
+
+
+
+        except Exception as e:
+            logger.error(f"Error occurred in PybulletWorld -> create_wall(), error: {e}")
+            raise e
 
 
 
     def spawn_headquarter(self, position: Tuple[float,float,float]):
-
         try: 
+            logger.debug(f"PybulletWorld -> spawn_headquarter(): STARTS")
+            
             # base platform
             base_info = SpawnObject(
                 name= "HQ",
@@ -209,11 +251,13 @@ class PyBulletWorld:
             marker_id = create_body(body_info= marker_info, position= marker_pos, orientation = None)
 
             self.hq_body_ids = [base_id, pole_id, marker_id]
+
+            logger.debug(f"PybulletWorld -> spawn_headquarter(): ENDS")
             return
 
 
         except Exception as e:
-            logger.info(f"Error occurred in spawn_headquarter(), error: {e}")
+            logger.error(f"Error occurred in PybulletWorld -> spawn_headquarter(), error: {e}")
             raise e
 
 
@@ -223,46 +267,54 @@ class PyBulletWorld:
         Spawn dump point stations in the buffer area.
         Each dump point is a static colored box.
         """
-        # Dump points are taken from `action.yaml` config file
-        dump_points = self.dump_points
+        try: 
+            logger.debug(f"PybulletWorld -> spawn_dump_points(): STARTS")
 
-        # Cube sahped stations
-        half_extents = [2.0, 2.0, 1.0]                     # 2x2x0.5 box
+            # Dump points are taken from `action.yaml` config file
+            dump_points = self.dump_points
 
-        collision_shape = p.createCollisionShape(
-            shapeType=p.GEOM_BOX,
-            halfExtents=half_extents,
-            physicsClientId=self.physics_client_id
-        )
+            # Cube sahped stations
+            half_extents = [2.0, 2.0, 1.0]                     # 2x2x0.5 box
 
-        visual_shape = p.createVisualShape(
-            shapeType=p.GEOM_BOX,
-            halfExtents=half_extents,
-            rgbaColor=[1.0, 0.6, 0.0, 1.0],                 # orange
-            physicsClientId=self.physics_client_id
-        )
-
-
-        for idx, dump_point in enumerate(dump_points):
-            dp = dump_point.position
-            body_id = p.createMultiBody(
-                baseMass=0.0,                               # static
-                baseCollisionShapeIndex=collision_shape,
-                baseVisualShapeIndex=visual_shape,
-                basePosition=[dp.x, dp.y, dp.z + 0.50],     # sits on surface
+            collision_shape = p.createCollisionShape(
+                shapeType=p.GEOM_BOX,
+                halfExtents=half_extents,
                 physicsClientId=self.physics_client_id
             )
 
-            p.changeVisualShape(
-                body_id,
-                -1,
-                rgbaColor=[1.0, 0.7, 0.2, 1.0],
+            visual_shape = p.createVisualShape(
+                shapeType=p.GEOM_BOX,
+                halfExtents=half_extents,
+                rgbaColor=[1.0, 0.6, 0.0, 1.0],                 # orange
                 physicsClientId=self.physics_client_id
             )
 
-            self.dump_point_ids.append(body_id)
 
-            logger.info(f"Spawned Dump Point {idx} at ({dp.x}, {dp.y}, {dp.z})")
+            for idx, dump_point in enumerate(dump_points):
+                dp = dump_point.position
+                body_id = p.createMultiBody(
+                    baseMass=0.0,                               # static
+                    baseCollisionShapeIndex=collision_shape,
+                    baseVisualShapeIndex=visual_shape,
+                    basePosition=[dp.x, dp.y, dp.z + 0.50],     # sits on surface
+                    physicsClientId=self.physics_client_id
+                )
 
-        logger.info(f"Total dump points spawned: {len(self.dump_point_ids)}")
-        return
+                p.changeVisualShape(
+                    body_id,
+                    -1,
+                    rgbaColor=[1.0, 0.7, 0.2, 1.0],
+                    physicsClientId=self.physics_client_id
+                )
+
+                self.dump_point_ids.append(body_id)
+                logger.debug(f"PybulletWorld -> spawn_dump_points(): Spawned Dump Point {idx} at ({dp.x}, {dp.y}, {dp.z})")
+
+
+            logger.debug(f"PybulletWorld -> spawn_dump_points(): ENDS, Total dump points spawned: {len(self.dump_point_ids)}")
+            return
+        
+
+        except Exception as e:
+            logger.error(f"Error occurred in PybulletWorld -> spawn_dump_points(), error: {e}")
+            raise e

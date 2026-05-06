@@ -11,7 +11,7 @@ from src.common.io.folder_video import FolderVideoInput
 # Returns the Vision Input object, after detecting the source of visual feed (CAMERA/ VIDEO/ SIMULATION).
 def build_vision_input(io_cfg: IOConfig):
     try:
-        logger.info(f"build_vision_input(): STARTS, vision source: {io_cfg.source}")
+        logger.debug(f"build_vision_input(): STARTS, vision source: {io_cfg.source}")
 
         if io_cfg.source == "camera" and io_cfg.camera:
             return CameraInput(device_id= io_cfg.camera.device_id)
@@ -27,5 +27,5 @@ def build_vision_input(io_cfg: IOConfig):
     
 
     except Exception as e:
-        logger.info(f"Error occurred in build_vision_input(): {e}")
+        logger.error(f"Error occurred in build_vision_input(): {e}")
         raise e

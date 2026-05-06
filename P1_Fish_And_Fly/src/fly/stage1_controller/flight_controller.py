@@ -15,17 +15,18 @@ class FlightController:
         self.mode = FlightMode.IDLE
         self.last_cmd_ts = time.time()
 
+
     
     def takeoff(self) -> Waypoint:
         try:
-            logger.info(f"FlightController -> takeoff(): STARTS")
+            logger.debug(f"FlightController -> takeoff(): STARTS")
 
             if self.mode != FlightMode.IDLE:
                 return self.pose
 
             self.mode = FlightMode.TAKEOFF
 
-            logger.info(f"FlightController -> takeoff(): ENDS, mode: {self.mode}")
+            logger.debug(f"FlightController -> takeoff(): ENDS, mode: {self.mode}")
             return self.pose
             
 
@@ -34,13 +35,14 @@ class FlightController:
             raise e
     
 
+
     def hover(self):
         try:
-            logger.info(f"FlightController -> hover(): STARTS")
+            logger.debug(f"FlightController -> hover(): STARTS")
 
             self.mode = FlightMode.HOVER
 
-            logger.info(f"FlightController -> hover(): ENDS, mode: {self.mode}")
+            logger.debug(f"FlightController -> hover(): ENDS, mode: {self.mode}")
             return self.pose
 
 
@@ -52,11 +54,11 @@ class FlightController:
 
     def hold_position(self):
         try:
-            logger.info(f"FlightController -> hold_position(): STARTS")
+            logger.debug(f"FlightController -> hold_position(): STARTS")
 
             self.mode = FlightMode.HOLD
 
-            logger.info(f"FlightController -> hold_position(): ENDS, mode: {self.mode}")
+            logger.debug(f"FlightController -> hold_position(): ENDS, mode: {self.mode}")
             return self.pose
 
 
@@ -67,11 +69,11 @@ class FlightController:
 
     def return_home(self):
         try:
-            logger.info(f"FlightController -> return_home(): STARTS")
+            logger.debug(f"FlightController -> return_home(): STARTS")
 
             self.mode = FlightMode.RETURN_HOME
 
-            logger.info(f"FlightController -> return_home(): ENDS, mode: {self.mode}")
+            logger.debug(f"FlightController -> return_home(): ENDS, mode: {self.mode}")
             return self.pose
 
 

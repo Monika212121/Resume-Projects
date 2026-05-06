@@ -6,9 +6,10 @@ from src.common.simulation.entity import SpawnObject
 from src.common.simulation.constants import SHAPE_MAP
 
 
+
 def create_body(body_info: SpawnObject, position: Tuple[float, float, float], orientation: Optional[Tuple[float,float,float,float]]) -> int:
     try:
-        logger.info(f"create_body(): STARTS, body_info: {body_info}, position: {position}")
+        logger.debug(f"create_body(): STARTS, body_info: {body_info}, position: {position}")
 
         shape, size, color = body_info.shape, body_info.size, body_info.color
 
@@ -77,10 +78,10 @@ def create_body(body_info: SpawnObject, position: Tuple[float, float, float], or
             baseOrientation = curr_orientation
         )
 
-        logger.info(f"create_body(): ENDS,  visual:{visual}, collision: {collision}, position: {position}, body_id: {body_id}")
+        logger.debug(f"create_body(): ENDS,  visual:{visual}, collision: {collision}, position: {position}, body_id: {body_id}")
         return body_id
 
 
     except Exception as e:
-        logger.info(f"Error occurred in create_body(), error: {e}")
+        logger.error(f"Error occurred in create_body(), error: {e}")
         raise e

@@ -19,7 +19,7 @@ class VisionPipeline:
 
     def run(self, frame) -> List[TrackedObject]:
         try:
-            logger.info("VisionPipeline-> run(): STARTS")
+            logger.debug("VisionPipeline-> run(): STARTS")
 
             # Running inference on YOLOv8s model
             results = self.vision.tracker.infer_yolo_model(frame = frame)
@@ -61,11 +61,11 @@ class VisionPipeline:
             # Taking only navigation hazard detections
             navigation_hazards: List[TrackedObject] = [obj for obj in tracked_objects if obj.entity_role == EntityRole.NAVIGATION_HAZARD]
 
-            logger.info(f"VisionPipeline-> run(): ENDS, navigation hazards: {navigation_hazards}")
+            logger.debug(f"VisionPipeline-> run(): ENDS, navigation hazards: {navigation_hazards}")
             return navigation_hazards                                           
 
         except Exception as e:
-            logger.info(f"Error occurred in VisionPipeline -> run(), error: {e}")  
+            logger.error(f"Error occurred in VisionPipeline -> run(), error: {e}")  
             raise e
         
 
@@ -97,9 +97,10 @@ class VisionPipeline:
 
                 tracked_objects.append(tracked_object)
             
-            logger.info(f"VisionPipeline-> convert_detections(): ENDS, tracked_objects: {tracked_objects}")
+            logger.debug(f"VisionPipeline-> convert_detections(): ENDS, tracked_objects: {tracked_objects}")
             return tracked_objects
 
+
         except Exception as e:
-            logger.info(f"Error occurred in VisionPipeline -> convert_detections(), error: {e}")  
+            logger.error(f"Error occurred in VisionPipeline -> convert_detections(), error: {e}")  
             raise e

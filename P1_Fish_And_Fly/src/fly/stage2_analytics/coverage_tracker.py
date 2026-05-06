@@ -14,7 +14,10 @@ class LawnMowerCoverageTracker:
         self.lastpos = (10.0, 10.0, 0.0)
         self.total_cells = gridsize * gridsize
         self.expected_rows_covered = 0
+        
         self.reset_all_grids()
+
+
 
     def reset_all_grids(self):
         self.surface_coverage_grid = np.zeros((self.gridsize, self.gridsize), dtype=np.uint8)
@@ -22,15 +25,21 @@ class LawnMowerCoverageTracker:
         self.underwater_coverage_grid = np.zeros((self.gridsize, self.gridsize), dtype=np.uint8)
         self.underwater_heatmap = np.zeros((self.gridsize, self.gridsize), dtype=np.uint16)
         self.expected_rows_covered = 0
-        #logger.info("ALL GRIDS RESET - ACTUAL: 0.0000% | EXPECTED: 0.00% (0/100 rows)")
+
+
 
     def get_expected_coverage(self, curr_y: int) -> float:
         if curr_y <= 10:
             return 0.0
+
         return min(100.0, ((curr_y - 10) / 100.0) * 100.0)
+
+
 
     def to_index(self, val: float) -> int:
         return max(0, min(self.gridsize - 1, int(val) - self.mincoord))
+
+
 
     def update_coverage_area(self, currpos: Tuple[float, float, float]):
         x1, y1 = int(self.lastpos[0]), int(self.lastpos[1])
@@ -56,7 +65,7 @@ class LawnMowerCoverageTracker:
                 heatmap_grid[j_fill, uncovered] += 1
                 newly_covered += row_new
                 self.expected_rows_covered += 1
-                logger.info(f"{layer} Y-CHANGE → FILLED row y={y1}(j={j_fill}): +{row_new} cells (+{row_new/100:.2f}%)")
+                logger.debug(f"{layer} Y-CHANGE → FILLED row y={y1}(j={j_fill}): +{row_new} cells (+{row_new/100:.2f}%)")
 
         # **Path marking (X, Y, or diagonal)**
         if y1 == y2 and x1 != x2:  # Pure X-MOVE
@@ -68,7 +77,7 @@ class LawnMowerCoverageTracker:
                     coverage_grid[j, i] = 1
                     newly_covered += 1
                 heatmap_grid[j, i] += 1
-            logger.info(f"{layer} X-MOVE row{y1}(j={j}): {abs(x2-x1)} cells traversed")
+            logger.debug(f"{layer} X-MOVE row{y1}(j={j}): {abs(x2-x1)} cells traversed")
             
         elif x1 == x2 and y1 != y2:  # Pure Y-MOVE
             i = self.to_index(x1)
@@ -79,10 +88,10 @@ class LawnMowerCoverageTracker:
                     coverage_grid[j, i] = 1
                     newly_covered += 1
                 heatmap_grid[j, i] += 1
-            logger.info(f"{layer} Y-MOVE col{i}: {abs(y2-y1)} cells")
+            logger.debug(f"{layer} Y-MOVE col{i}: {abs(y2-y1)} cells")
             
         else:  # DIAGONAL or mixed
-            logger.info(f"{layer} MIXED PATH")
+            logger.debug(f"{layer} MIXED PATH")
             if x1 != x2:  # X path first
                 j = self.to_index(y1)
                 step_x = 1 if x2 > x1 else -1
@@ -106,9 +115,11 @@ class LawnMowerCoverageTracker:
         
         total_cov = np.count_nonzero(coverage_grid)
         actual_pct = (total_cov / self.total_cells) * 100
-        logger.info(f"ACTUAL: {actual_pct:06.4f}% ({total_cov:,}/{self.total_cells:,}) | "
+        logger.debug(f"ACTUAL: {actual_pct:06.4f}% ({total_cov:,}/{self.total_cells:,}) | "
                    f"EXPECTED: {expected_pct:06.2f}% | ROWS: {self.expected_rows_covered}/99 | "  # 99 rows + final row path
                    f"ΔNEW: +{newly_covered}")
+
+
 
     def log_full_status(self):
         s_total = np.count_nonzero(self.surface_coverage_grid)
@@ -116,25 +127,31 @@ class LawnMowerCoverageTracker:
         u_total = np.count_nonzero(self.underwater_coverage_grid)
         u_pct = u_total / self.total_cells * 100
         
-        logger.info("="*100)
-        #logger.info(f"FINAL @ {self.lastpos}")
-        logger.info(f"SURFACE: {s_pct:06.4f}% ({s_total:,}/{self.total_cells:,})")
-        logger.info(f"EXPECTED: {self.get_expected_coverage(int(self.lastpos[1])):06.2f}%")
-        logger.info(f"FILLED ROWS (10-109): {self.expected_rows_covered}/99")
-        logger.info(f"FINAL ROW y=110 cells: {np.sum(self.surface_coverage_grid[self.to_index(110), :])}/100")
-        logger.info("="*100)
+        logger.debug("="*100)
+        #logger.debug(f"FINAL @ {self.lastpos}")
+        logger.debug(f"SURFACE: {s_pct:06.4f}% ({s_total:,}/{self.total_cells:,})")
+        logger.debug(f"EXPECTED: {self.get_expected_coverage(int(self.lastpos[1])):06.2f}%")
+        logger.debug(f"FILLED ROWS (10-109): {self.expected_rows_covered}/99")
+        logger.debug(f"FINAL ROW y=110 cells: {np.sum(self.surface_coverage_grid[self.to_index(110), :])}/100")
+        logger.debug("="*100)
+
+
 
     def get_coverage_percentages(self):
         s_pct = np.count_nonzero(self.surface_coverage_grid) / self.total_cells * 100
         u_pct = np.count_nonzero(self.underwater_coverage_grid) / self.total_cells * 100
-        logger.info(f"API: S{s_pct:06.4f}% | ROWS{self.expected_rows_covered}/99 | FINAL_ROW{np.sum(self.surface_coverage_grid[self.to_index(110), :])}/100")
+        logger.debug(f"API: S{s_pct:06.4f}% | ROWS{self.expected_rows_covered}/99 | FINAL_ROW{np.sum(self.surface_coverage_grid[self.to_index(110), :])}/100")
 
         self.log_full_status()
         return CoverageArea(surface_percentage=round(s_pct, 3), underwater_percentage=round(u_pct, 3))
 
+
+
     def get_surface_heatmap(self):
         maxval = self.surface_heatmap.max()
         return self.surface_heatmap / maxval if maxval > 0 else self.surface_heatmap
+
+
 
     def get_underwater_heatmap(self):
         maxval = self.underwater_heatmap.max()
