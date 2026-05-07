@@ -69,7 +69,7 @@ class BoundaryNavigator:
 
             next_position = self.get_next_position_in_boundary_path(target_corner = end_point)
 
-            # Change boundary edge, if Manatee reaches the current edge's end point corner.
+            # Change boundary edge, if Manatee reaches the current edge's end point(corner).
             if self.is_close(a= next_position, b= end_point):
 
                 # Updating current boundary edge

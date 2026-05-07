@@ -44,7 +44,7 @@ class DecisionPipeline:
             # Creating dispatch order for Manatee machine
             
             # CASE1: If Fish machine is DEAD or asekd help or FAIELD/ABORTED executing mission, creating Fish rescue order, to extract Fish machine safely to the HQ
-            if (state_deltas.fish_state != FishStatus.ALIVE.name) or heartbeat.need_help or (heartbeat.mission_phase in [MissionPhase.FAILED, MissionPhase.ABORT]):
+            if heartbeat.need_help or (heartbeat.mission_phase in [MissionPhase.FAILED, MissionPhase.ABORT]):
 
                 dispatch_order = DispatchOrder.create_rescue_order(
                     fish_position= heartbeat.position,

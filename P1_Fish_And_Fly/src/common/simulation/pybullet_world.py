@@ -1,6 +1,5 @@
 import pybullet as p
-import pybullet_data
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from src.common.logging import logger
 from src.common.entity.position import Waypoint
@@ -21,8 +20,10 @@ class PyBulletWorld:
 
         self.physics_client_id = None
         self.dump_points: List[DumpConfig] = dump_points_info
-        self.dump_point_ids: List[int] = []
+        self.dump_point_body_IDs: Dict[int, int] = {}
         self.recorder = SimulationRecorder()
+
+        self.last_filled_dump_bodyID = -1
 
 
 
@@ -61,11 +62,14 @@ class PyBulletWorld:
             p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, 0)
 
 
-            # Crate Head Quarter of the workspace
+            # Create Head Quarter(H.Q.) of the workspace
             self.spawn_headquarter(position= (0.0, 20.10, 0.0))
 
             # Create dump points on the boundary of the workspace
             self.spawn_dump_points()
+
+            # Setup camera
+            self.setup_camera()
 
             self.connected = True
 
@@ -100,6 +104,28 @@ class PyBulletWorld:
             logger.error(f"Error occurred in PybulletWorld -> update_camera_follow_fish(), error: {e}")
             raise e
 
+
+
+
+    def setup_camera(self):
+        try: 
+            logger.debug(f"PybulletWorld -> setup_camera(): STARTS")
+
+            p.resetDebugVisualizerCamera(
+                cameraDistance= 80,                                                                              # wide enough to see garbage
+                cameraYaw= 60,
+                cameraPitch= -55,
+                cameraTargetPosition= [60, 60, 0],
+            )
+
+            logger.debug(f"PybulletWorld -> setup_camera(): ENDS")
+            return
+
+
+        except Exception as e:
+            logger.error(f"Error occurred in PybulletWorld -> setup_camera(), error: {e}")
+            raise e
+        
 
 
     def shutdown(self):
@@ -273,8 +299,8 @@ class PyBulletWorld:
             # Dump points are taken from `action.yaml` config file
             dump_points = self.dump_points
 
-            # Cube sahped stations
-            half_extents = [2.0, 2.0, 1.0]                     # 2x2x0.5 box
+            # Cube shaped stations
+            half_extents = [1.8, 1.8, 0.8]                     # 2x2x0.5 box
 
             collision_shape = p.createCollisionShape(
                 shapeType=p.GEOM_BOX,
@@ -307,14 +333,46 @@ class PyBulletWorld:
                     physicsClientId=self.physics_client_id
                 )
 
-                self.dump_point_ids.append(body_id)
+                self.dump_point_body_IDs[dump_point.dump_id] = body_id
+
                 logger.debug(f"PybulletWorld -> spawn_dump_points(): Spawned Dump Point {idx} at ({dp.x}, {dp.y}, {dp.z})")
 
 
-            logger.debug(f"PybulletWorld -> spawn_dump_points(): ENDS, Total dump points spawned: {len(self.dump_point_ids)}")
+            logger.debug(f"PybulletWorld -> spawn_dump_points(): ENDS, Total dump points spawned: {len(self.dump_point_body_IDs)}")
             return
         
 
         except Exception as e:
             logger.error(f"Error occurred in PybulletWorld -> spawn_dump_points(), error: {e}")
             raise e
+        
+
+
+    def update_dump_blinking(self, dump_id: int):
+        try:
+            target_dump_body_ID: int
+
+            # If there is filled dump point, mark it yellow
+            if dump_id > 0:
+                target_dump_body_ID = self.dump_point_body_IDs[dump_id]
+                self.last_filled_dump_bodyID = target_dump_body_ID
+                color = [0.38, 0.25, 0.12, 1.0]                                                                 # mud brown
+            
+            # If there is no filled dump point, then restore the orignal orange color of last marked dump point
+            else:
+                target_dump_body_ID = self.last_filled_dump_bodyID
+                color = [1.0, 0.7, 0.2, 1.0]                                                                    # orange
+
+
+            p.changeVisualShape(
+                target_dump_body_ID,
+                -1,
+                rgbaColor= color
+            )
+
+            return
+        
+
+        except Exception as e:
+            logger.error(f"Error occurred in PybulletWorld -> update_dump_blinking(), error: {e}")
+            raise e        

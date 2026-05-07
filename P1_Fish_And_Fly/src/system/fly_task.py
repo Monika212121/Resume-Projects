@@ -29,9 +29,9 @@ async def run_fly(
             if not fish_heartbeat_queue.empty():
                 fish_heartbeat = await fish_heartbeat_queue.get()
 
-            logger.info(f"run_fly(): Fly received heartbeat: {fish_heartbeat}")
-
             dispatch_order, fish_control_signal = fly.tick(heartbeat = fish_heartbeat)
+
+            logger.info(f"run_fly(): Fly received heartbeat: {fish_heartbeat}, dispatch_order: {dispatch_order}")
 
             # Send Dispatch order to Manatee
             if dispatch_order:

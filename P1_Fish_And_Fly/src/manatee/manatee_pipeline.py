@@ -141,7 +141,7 @@ class ManateePipeline:
 
             # ACTION: Execute the action intent(from Decision -> Action) to collect the target garbage, following the mission planner.
             # SIMULATION: Action and Simulation are connected together and run parallely.
-            dispatch_outcome = self.mission_planner_obj.tick(dispatch_order = dispatch_order, hazard_objects = hazard_objects_list)  
+            dispatch_outcome = self.mission_planner_obj.tick(dispatch_order = dispatch_order)  
                 
             logger.info("********************************************MANATEE MODULE SYSTEM: ENDS**********************************************")
             return dispatch_outcome

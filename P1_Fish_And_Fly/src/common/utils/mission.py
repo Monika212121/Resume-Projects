@@ -87,3 +87,20 @@ def get_target_distance(current_position: Tuple[float,float,float,float], target
     except Exception as e:
         logger.info(f"Error occurred in get_target_distance(), error: {e}")
         raise e
+    
+
+
+def compute_yaw(current_position: Waypoint, target_position: Waypoint) -> float:
+    try:
+        dx = target_position.x - current_position.x
+        dy = target_position.y - current_position.y
+
+        angle = math.atan2(dy, dx)
+
+        logger.info(f"compute_yaw(): ENDS, angle: {angle}")
+        return angle
+
+
+    except Exception as e:
+        logger.error(f"Error occurred in compute_yaw(), error: {e}")
+        raise e

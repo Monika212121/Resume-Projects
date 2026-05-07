@@ -1,4 +1,5 @@
 import time
+import math
 import numpy as np
 import pybullet as p
 from typing import Optional, Tuple, Dict, List
@@ -9,7 +10,7 @@ from src.common.simulation.entity import SpawnObject
 from src.common.simulation.clamper import clamp_position
 from src.common.entity.manatee_communication import ManateeMode
 from src.common.entity.machine_types import MachineState, MachineType
-from src.common.simulation.constants import SLOW_TELEPORT_PHASES, STOP_DELAY, TEXT_COLOR, SHAPE_MAP
+from src.common.simulation.constants import SLOW_TELEPORT_PHASES, STOP_DELAY, SHAPE_MAP
 
 from src.common.utils.mission import MissionPhase
 
@@ -90,7 +91,7 @@ class RobotController:
 
 
 
-    def teleport_fish_robot(self, pose: Waypoint, current_mission_phase: MissionPhase):
+    def teleport_fish_robot(self, pose: Waypoint, robot_yaw: float, current_mission_phase: MissionPhase):
         logger.info(f"RobotController -> teleport_fish_robot(): STARTS, pose: {pose}")
 
         robot_id = self.get_robot_body_id(robot_name= MachineType.FISH)
@@ -106,6 +107,9 @@ class RobotController:
 
         # Fish machine can cross this safe boundary, only when in UNLOADING/ RETURN_HQ/ ABORT/ FAILED phases
         safe_position = pose if allowed_to_exit_safe_boundary else clamp_position(position= pose)
+
+        # Covert yaw -> quaternion
+        quat = p.getQuaternionFromEuler([0, 0, robot_yaw])            
 
         logger.info(f"RobotController -> teleport_fish_robot(), safe_position: {safe_position}")
 
@@ -130,7 +134,7 @@ class RobotController:
             p.resetBasePositionAndOrientation(
                 robot_id,
                 [safe_position.x, safe_position.y, safe_position.z],
-                [0, 0, 0, 1],
+                quat,
             )
 
         '''
@@ -149,6 +153,14 @@ class RobotController:
 
     def _slow_teleport(self, fish_body_id: int, start: Waypoint, end: Waypoint, curr_phase: MissionPhase, steps: int = 30, step_delay: float = 0.04):
 
+        # Calcualting orientation for Manatee machine, so that Manatee faces towards direction
+        dx = end.x - start.x
+        dy = end.y - start.y
+
+        yaw = math.atan2(dy, dx)
+        quat = p.getQuaternionFromEuler([0, 0, yaw])
+
+
         for alpha in np.linspace(0.0, 1.0, steps):
             interp_pos = Waypoint(
                 x=start.x + alpha * (end.x - start.x),
@@ -159,15 +171,17 @@ class RobotController:
             p.resetBasePositionAndOrientation(
                 fish_body_id,
                 [interp_pos.x, interp_pos.y, interp_pos.z],
-                [0, 0, 0, 1],
+                quat,
             )
 
+            '''
             p.addUserDebugText(
                 curr_phase.name,
                 [interp_pos.x, interp_pos.y, interp_pos.z + 2],
                 textColorRGB= TEXT_COLOR[curr_phase],
-                lifeTime=0.1
+                lifeTime=2.0
             )
+            '''
 
             p.stepSimulation()
             time.sleep(step_delay)
@@ -219,7 +233,7 @@ class RobotController:
     
 
 
-    def teleport_manatee_robot(self, pose: Waypoint, current_operation_mode: ManateeMode):
+    def teleport_manatee_robot(self, pose: Waypoint, robot_yaw: float):
         logger.info(f"RobotController -> teleport_manatee_robot(): STARTS, pose: {pose}")
 
         robot_id = self.get_robot_body_id(robot_name= MachineType.MANATEE)
@@ -230,20 +244,15 @@ class RobotController:
         if p.getConnectionInfo()["isConnected"] == 0:
             raise RuntimeError("PyBullet is not connected. Did you forget sim_bridge.start()?")
 
+        # Covert yaw -> quaternion
+        quat = p.getQuaternionFromEuler([0, 0, robot_yaw])
+
         # Normal traversal
         p.resetBasePositionAndOrientation(
             robot_id,
             [pose.x, pose.y, pose.z],
-            [0, 0, 0, 1],
+            quat,
         )
-        '''
-        p.addUserDebugText(
-            curr_phase.name,
-            [interp_pos.x, interp_pos.y, interp_pos.z + 2],
-            textColorRGB= TEXT_COLOR[curr_phase],
-            lifeTime=0.1
-        )
-        '''
 
         logger.info(f"RobotController -> teleport_manatee_robot(): ENDS")
         return

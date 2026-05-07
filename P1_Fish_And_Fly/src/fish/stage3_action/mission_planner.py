@@ -4,10 +4,10 @@ from typing import Optional, List, Tuple
 from src.common.logging import logger
 from src.common.utils.mission import MissionPhase
 from src.common.action.bin_manager import BinManager
-from src.common.utils.mission import is_reached_target
 from src.common.entity.machine_types import MachineType
 from src.common.projection.entity import FishFrameObject
 from src.common.simulation.sim_bridge import SimulationBridge
+from src.common.utils.mission import is_reached_target, compute_yaw
 from src.common.utils.path_cost_calculator import PathCostCalculator
 from src.common.logging.telemetry_csv_logger import TelemetryCSVLogger
 from src.common.alerts_and_notifications.notifier import AlertNotifier
@@ -494,8 +494,11 @@ class MissionPlanner:
             # Connecting PyBullet Simulation / real control
             # NOTE: Here, I am not passing target waypoint, I am passing the new target position (already calculated in step_forward())
             
+            # Computing orientation of Fish machine
+            yaw = compute_yaw(current_position= self.navigator.current_position, target_position = target_position)
+
             # Execute simulation step (teleport-based kinematic execution)
-            self.sim_bridge.step(robot= MachineType.FISH, pose= target_position, curr_mission_phase= self.phase)
+            self.sim_bridge.step(robot= MachineType.FISH, pose= target_position, robot_yaw= yaw, curr_mission_phase= self.phase)
 
             # Read back pose from simulation (after stepping)
             sim_curr_pose = self.sim_bridge.get_robot_pose(robot= MachineType.FISH)

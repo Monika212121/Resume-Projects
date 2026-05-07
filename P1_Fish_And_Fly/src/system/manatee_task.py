@@ -1,8 +1,10 @@
 # Stateful execution
 
 import asyncio
+from typing import Optional
 
 from src.common.logging import logger
+from src.common.entity.dispatch import DispatchOrder, DispatchOutcome
 
 from src.manatee.manatee_pipeline import ManateePipeline
 
@@ -16,15 +18,18 @@ async def run_manatee(manatee: ManateePipeline, dispatch_order_queue: asyncio.Qu
         try:
             logger.info(f"$$$$$$$$$$$$$$$$  run_manatee(): $$$$$$$$$$$$$$$$$$$")
 
-            logger.info(f"Dispatch_order Queue: {dispatch_order_queue.qsize()}")
+            logger.info(f"run_manatee(), Dispatch_order Queue: {dispatch_order_queue.qsize()}")
             
+            dispatch_order: Optional[DispatchOrder] = None
+            dispatch_order_outcome: Optional[DispatchOutcome] = None
+
             # Pick task if there is any dispatch order
             if not dispatch_order_queue.empty():
                 dispatch_order = await dispatch_order_queue.get()
 
-            # Exexute task continuously
+            # Execute task continuously
             if dispatch_order:
-                logger.info(f"Manatee executing Dispatch order: {dispatch_order}")
+                logger.info(f"run_manatee(), Dispatch order: {dispatch_order}")
                 dispatch_order_outcome = manatee.tick(dispatch_order = dispatch_order)
 
             if dispatch_order_outcome:

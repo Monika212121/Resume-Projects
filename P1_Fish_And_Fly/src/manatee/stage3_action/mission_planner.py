@@ -5,12 +5,12 @@ from src.common.entity.position import Waypoint
 from src.common.entity.dump import DumpPointState
 from src.common.utils.mission import MissionPhase
 from src.common.action.bin_manager import BinManager
-from src.common.utils.mission import is_reached_target
 from src.common.projection.entity import FishFrameObject
 from src.common.simulation.sim_bridge import SimulationBridge
+from src.common.utils.mission import is_reached_target, compute_yaw
 from src.common.entity.machine_types import MachineState, MachineType
-from src.common.entity.manatee_communication import DumpInfo, ManateeMode, TaskStatus
 from src.common.entity.dispatch import DispatchOrder, DispatchOutcome
+from src.common.entity.manatee_communication import DumpInfo, ManateeMode, TaskStatus
 
 from src.fly.stage3_decision.entity import DumpConfig
 
@@ -44,6 +44,8 @@ class MissionPlanner:
         self.step_retry_count = 0
         self.max_step_retry_count = 3
 
+        self.cleaned_dump_ids = set()
+
 
 
     def create_dump_projected_points_map(self) -> Dict[int, Waypoint]:
@@ -65,7 +67,7 @@ class MissionPlanner:
         
 
 
-    def tick(self, dispatch_order: DispatchOrder, hazard_objects: List[FishFrameObject]) -> DispatchOutcome:
+    def tick(self, dispatch_order: DispatchOrder) -> DispatchOutcome:
         try:
             logger.info(f"MissionPlanner -> tick(): STARTS, dispatch_order mode: {dispatch_order.operation_mode}")
 
@@ -87,9 +89,18 @@ class MissionPlanner:
                     )
                     return dispatch_result
 
+                target_dump_id = dispatch_order.dump_info.dump_id
+
+                # For activating/highlighting filled dump point as target(in simulation)
+                self.sim_bridge.filled_dump_id = target_dump_id if target_dump_id not in self.cleaned_dump_ids else -1
+                
                 operation_status = self.handle_collection(dump_info = dispatch_order.dump_info)
                 if operation_status == TaskStatus.FAILED:
                     operation_issue = "Error occurred in COLLECTION phase, Simulation error"
+                
+                elif operation_status == TaskStatus.COMPLETED:
+                    self.cleaned_dump_ids.add(target_dump_id)                                               # Marking dump point as cleaned
+                    self.sim_bridge.filled_dump_id = -1                                                     # Reset filled dump = None, to unmark collected/cleaned dump
 
 
             elif operation_mode == ManateeMode.RESCUE:
@@ -312,7 +323,48 @@ class MissionPlanner:
 
 
 
+    # Bridge function between simulator and navigator
+    def simulate_step_forward2(self, target_position: Waypoint) -> bool:
+        try:
+            logger.info(f"MissionPlanner -> simulate_step_forward2(): STARTS, before current postion: {self.navigator.current_position}")
 
+            # Connecting PyBullet Simulation / real control
+            # NOTE: Here, I am not passing target waypoint, I am passing the new target position
+
+            # Computing orientation of Manatee machine
+            yaw = compute_yaw(current_position= self.navigator.current_position, target_position = target_position)
+            
+            # Execute simulation step (teleport-based kinematic execution)
+            self.sim_bridge.step(robot= MachineType.MANATEE, pose= target_position, robot_yaw = yaw, curr_operation_mode= self.mission_state["operation_mode"])
+
+            # Read back pose from simulation (after stepping)
+            sim_curr_pose = self.sim_bridge.get_robot_pose(robot= MachineType.MANATEE)
+            if sim_curr_pose is None:
+                logger.info(f"MissionPlanner -> simulate_step_forward2(): SIMULATION ISSUE: Current Manatee machine's position cannot be retrieved from Simulation")
+                return False
+            
+            # Retrieve the waypoint from Tuple[x,y,z,yaw]
+            sim_current_position = Waypoint(sim_curr_pose[0], sim_curr_pose[1], sim_curr_pose[2])
+
+            # Validate simulation result
+            if not is_reached_target(current_position= sim_current_position, target_position= target_position):
+                logger.error("MissionPlanner -> simulate_step_forward2(): "f"Simulation mismatch | sim={sim_curr_pose}, target={target_position}")
+                logger.warning(f"SIM clamp applied: target_position: {target_position} → safe_position: {sim_curr_pose}")
+                return False
+            
+            # Update Manatee machine's operation mode for this step
+            self.sim_bridge.robot_controller.update_robot_state(robot_name= MachineType.MANATEE, current_phase= None, curr_mode= self.mode)
+
+            # Commit Manatee machine pose, from simulation world, back to Navigation (single source of truth)
+            self.navigator.current_position = sim_current_position
+           
+            logger.info(f"MissionPlanner -> simulate_step_forward2(): ENDS, after current position: {self.navigator.current_position}")
+            return True
+
+    
+        except Exception as e:
+            logger.info(f"Error occurred in MissionPlanner -> simulate_step_forward2(), error: {e}")
+            raise e
 
 
 
@@ -511,44 +563,3 @@ class MissionPlanner:
             logger.info(f"Error occurred in MissionPlanner -> execute_navigation_to(), error: {e}")
             raise e 
         
-
-
-    # bridge function between simulator and navigator
-    def simulate_step_forward2(self, target_position: Waypoint) -> bool:
-        try:
-            logger.info(f"MissionPlanner -> simulate_step_forward2(): STARTS, before current postion: {self.navigator.current_position}")
-
-            # Connecting PyBullet Simulation / real control
-            # NOTE: Here, I am not passing target waypoint, I am passing the new target position (already calculated in step_forward())
-            
-            # Execute simulation step (teleport-based kinematic execution)
-            self.sim_bridge.step(robot= MachineType.MANATEE, pose= target_position, curr_operation_mode= self.mission_state["operation_mode"])
-
-            # Read back pose from simulation (after stepping)
-            sim_curr_pose = self.sim_bridge.get_robot_pose(robot= MachineType.MANATEE)
-            if sim_curr_pose is None:
-                logger.info(f"MissionPlanner -> simulate_step_forward2(): SIMULATION ISSUE: Current Manatee machine's position cannot be retrieved from Simulation")
-                return False
-            
-            # Retrieve the waypoint from Tuple[x,y,z,yaw]
-            sim_current_position = Waypoint(sim_curr_pose[0], sim_curr_pose[1], sim_curr_pose[2])
-
-            # Validate simulation result
-            if not is_reached_target(current_position= sim_current_position, target_position= target_position):
-                logger.error("MissionPlanner -> simulate_step_forward2(): "f"Simulation mismatch | sim={sim_curr_pose}, target={target_position}")
-                logger.warning(f"SIM clamp applied: target_position: {target_position} → safe_position: {sim_curr_pose}")
-                return False
-            
-            # Update Manatee machine's operation mode for this step
-            self.sim_bridge.robot_controller.update_robot_state(robot_name= MachineType.MANATEE, current_phase= None, curr_mode= self.mode)
-
-            # Commit Manatee machine pose, from simulation world, back to Navigation (single source of truth)
-            self.navigator.current_position = sim_current_position
-            
-            logger.info(f"MissionPlanner -> simulate_step_forward2(): ENDS, after current position: {self.navigator.current_position}")
-            return True
-
-    
-        except Exception as e:
-            logger.info(f"Error occurred in MissionPlanner -> simulate_step_forward2(), error: {e}")
-            raise e

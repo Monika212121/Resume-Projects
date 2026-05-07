@@ -13,6 +13,7 @@ from src.common.simulation.pybullet_world import PyBulletWorld
 from src.common.entity.manatee_communication import ManateeMode
 from src.common.simulation.robot_controller import RobotController
 from src.common.entity.fish_communication import FishNavigationInfo
+from src.common.simulation.constants import FISH_TEXT_COLOR, MANATEE_TEXT_COLOR
 
 from src.fly.stage3_decision.entity import DumpConfig
 
@@ -36,6 +37,7 @@ class SimulationBridge:
         self.grasp_threshold: float = self.simulation_cfg.grasp_threshold
         self.recording_enabled: bool = self.simulation_cfg.record_output
 
+        self.filled_dump_id = -1
 
 
     def start(self):
@@ -88,41 +90,47 @@ class SimulationBridge:
 
 
 
-    def step(self, robot: MachineType, pose: Waypoint, curr_mission_phase: MissionPhase = MissionPhase.SURFACE, curr_operation_mode: ManateeMode = ManateeMode.IDLE):
+    def step(self, robot: MachineType, pose: Waypoint, robot_yaw: float, curr_mission_phase: MissionPhase = MissionPhase.SURFACE, curr_operation_mode: ManateeMode = ManateeMode.IDLE):
         try:
+
+            # Initialize debug ids once
+            if not hasattr(self, "fish_text_id"):
+                self.fish_text_id = -1
+
+            if not hasattr(self, "manatee_text_id"):
+                self.manatee_text_id = -1
+
             # Traverse Fish robot to the given position
             if robot == MachineType.FISH:
-                self.robot_controller.teleport_fish_robot(pose= pose, current_mission_phase= curr_mission_phase)
+                self.robot_controller.teleport_fish_robot(pose= pose, robot_yaw = robot_yaw, current_mission_phase= curr_mission_phase)
 
                 # Update the camera view
-                self.world.update_camera_follow_fish(pose)
+                #self.world.update_camera_follow_fish(pose)
 
-                # Displaying text above robot
-                p.addUserDebugText(
+                # Updating debug text and displaying above Fish robot
+                self.fish_text_id = p.addUserDebugText(
                     curr_mission_phase.name,
                     [pose.x, pose.y, pose.z + 2],
-                    textColorRGB=[0, 1, 0],
-                    lifeTime=0.1
+                    textColorRGB= FISH_TEXT_COLOR[curr_mission_phase],
+                    lifeTime= 0,                     # persistent
+                    replaceItemUniqueId= self.fish_text_id,
                 )
 
             else:
-                self.robot_controller.teleport_manatee_robot(pose= pose, current_operation_mode= curr_operation_mode)
+                self.robot_controller.teleport_manatee_robot(pose= pose, robot_yaw = robot_yaw)
 
-                # Displaying text above robot
-                p.addUserDebugText(
+                # Updating debug text and displaying above Manatee robot
+                self.manatee_text_id = p.addUserDebugText(
                     curr_operation_mode.name,
                     [pose.x, pose.y, pose.z + 2],
                     textColorRGB=[0, 1, 0],
-                    lifeTime=0.1
+                    lifeTime=0,                      # persistent
+                    replaceItemUniqueId = self.manatee_text_id
                 )
 
             p.stepSimulation()
 
-            # Updating lifecycle of all spawned objects
-            self.object_manager.update_object_lifecycle()
-
-            # Updating hazard blinking
-            self.object_manager.update_hazard_blinking()
+            self.update_world()
 
             # Record the Simulation visualization
             if self.recording_enabled:
@@ -135,6 +143,26 @@ class SimulationBridge:
             logger.error(f"Error occurred in SimulationBridge -> step(), error: {e}")
             raise e
             
+    
+
+    def update_world(self):
+        try:
+            # Updating lifecycle of all spawned objects
+            self.object_manager.update_object_lifecycle()
+
+            # Updating hazard blinking
+            self.object_manager.update_hazard_blinking()
+
+            # Updating dump points
+            self.world.update_dump_blinking(dump_id= self.filled_dump_id)
+
+            return
+
+
+        except Exception as e:
+            logger.error(f"Error occurred in SimulationBridge -> update_world(), error: {e}")
+            raise e    
+
 
 
     def get_robot_pose(self, robot: MachineType):
