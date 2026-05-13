@@ -1,4 +1,5 @@
 import time
+import math
 from typing import Optional, List, Tuple
 
 from src.common.logging import logger
@@ -7,6 +8,7 @@ from src.common.action.bin_manager import BinManager
 from src.common.entity.machine_types import MachineType
 from src.common.projection.entity import FishFrameObject
 from src.common.simulation.sim_bridge import SimulationBridge
+from src.common.entity.manatee_communication import ManateeMode
 from src.common.utils.mission import is_reached_target, compute_yaw
 from src.common.utils.path_cost_calculator import PathCostCalculator
 from src.common.logging.telemetry_csv_logger import TelemetryCSVLogger
@@ -65,6 +67,9 @@ class MissionPlanner:
         # TODO: REMOVE AFTER TESTING
         self.tick_count: int = 0
         self.telemetry_logger = telemetry_logger                                                            # To log intermediate phases, refer ACTION_NOTES.md(12)
+        self.dump_event_counter = 1                                                                         # To create unique sequential unique dump event_id
+
+        self.safe_manatee_distance: float = 10.0                                                            # Avoiding collision from Manatee machine
 
 
 
@@ -98,9 +103,6 @@ class MissionPlanner:
 
             # NOTE: Implementing `Perception-driven Digital twin simulation`
             
-            # Start Simulation
-            #self.sim_bridge.start()     
-
             # Retrieve Fish machine's current navigation information(will be used in spawning)
             fish_nav_info = FishNavigationInfo(
                 position= self.navigator.current_position,
@@ -221,7 +223,9 @@ class MissionPlanner:
                 return dump_event, need_manatee_help                                                        # o/p = None, True/False
 
             # Creating DumpEvent after returning back to the freezed checkpoint position 
-            dump_event = DumpEvent(dump_id= best_dump_point.dump_id, load_added= self.bin_manager.current_load)
+            dump_event = DumpEvent(agent= MachineType.FISH, event_id= self.dump_event_counter, dump_id= best_dump_point.dump_id, load_added= self.bin_manager.current_load, timestamp= time.time())
+
+            self.dump_event_counter += 1
 
             # Reset bin load
             self.bin_manager.reset_bin()
@@ -494,11 +498,20 @@ class MissionPlanner:
             # Connecting PyBullet Simulation / real control
             # NOTE: Here, I am not passing target waypoint, I am passing the new target position (already calculated in step_forward())
             
+            curr_task = ""
+            curr_manatee_mode = self.sim_bridge.manatee_mode
+            
+            # Avoid collision from Manatee machine, dont move forward
+            logger.info(f"MANATEE NEAR BLOCK, curr_manatee_mode: {curr_manatee_mode}")
+            if self.is_manatee_near(target_position= target_position) and curr_manatee_mode not in [ManateeMode.IDLE, ManateeMode.PATROL]:
+                target_position = self.navigator.current_position
+                curr_task = ActionStatus.AVOIDED.name
+
             # Computing orientation of Fish machine
             yaw = compute_yaw(current_position= self.navigator.current_position, target_position = target_position)
 
             # Execute simulation step (teleport-based kinematic execution)
-            self.sim_bridge.step(robot= MachineType.FISH, pose= target_position, robot_yaw= yaw, curr_mission_phase= self.phase)
+            self.sim_bridge.step(robot= MachineType.FISH, pose= target_position, robot_yaw= yaw, extraTxt= curr_task, curr_mission_phase= self.phase)
 
             # Read back pose from simulation (after stepping)
             sim_curr_pose = self.sim_bridge.get_robot_pose(robot= MachineType.FISH)
@@ -610,4 +623,37 @@ class MissionPlanner:
 
         except Exception as e:
             logger.info(f"Error occurred in MissionPlanner -> execute_depth_transition(), error: {e}")
+            raise e
+        
+
+
+    def is_manatee_near(self, target_position: Waypoint) -> bool:
+        try:
+            logger.info(f"MissionPlanner -> is_manatee_near(): STARTS, target_position: {target_position}")
+            is_near: bool = False
+
+            manatee_position: Optional[Waypoint] = None
+            manatee_pose = self.sim_bridge.get_robot_pose(robot= MachineType.MANATEE)
+            if manatee_pose:
+                manatee_position = Waypoint(manatee_pose[0], manatee_pose[1], manatee_pose[2])
+            
+            if manatee_position is not None:
+                dx = abs(manatee_position.x - self.navigator.current_position.x)
+                dy = abs(manatee_position.y - self.navigator.current_position.y)
+                dz = abs(manatee_position.z - self.navigator.current_position.z)
+
+                # Distance between Manatee and Fish machine
+                distance = math.sqrt(dx*dx + dy*dy + dz*dz)
+                logger.info(f"MissionPlanner -> is_manatee_near(): Distance between MANTEE AND FISH: {distance}")
+
+                # If Manatee is near to Fish, then stop at the current position, dont move forward, update target to current position
+                if distance <= self.safe_manatee_distance:
+                    is_near = True
+
+            logger.info(f"MissionPlanner -> is_manatee_near(): ENDS, is_near: {is_near}")
+            return is_near
+
+
+        except Exception as e:
+            logger.error(f"Error occurred in MissionPlanner -> is_manatee_near(), error: {e}")
             raise e

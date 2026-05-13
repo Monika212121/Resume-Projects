@@ -9,7 +9,7 @@ from src.common.entity.position import Waypoint
 
 class ManateeMode(Enum):
     IDLE = "rest"
-    SHADOW = "shadow fish machine"
+    PATROL = "shadow fish machine, patrolling boundary"
     COLLECTION = "collection of dump point"
     RESCUE = "rescue fish machine"
     FINAL_SWEEP = "unload all 8 dump points"

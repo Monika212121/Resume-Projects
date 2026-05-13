@@ -24,6 +24,7 @@ class PyBulletWorld:
         self.recorder = SimulationRecorder()
 
         self.last_filled_dump_bodyID = -1
+        self.dump_blink_state = False
 
 
 
@@ -42,18 +43,8 @@ class PyBulletWorld:
             
             p.setGravity(0, 0, 0)
 
-            
             # Create water body workspace
             self.create_water_cuboid()
-            '''
-            # Lock camera ONCE
-            p.resetDebugVisualizerCamera(
-                cameraDistance=12,
-                cameraYaw=45,
-                cameraPitch=-30,
-                cameraTargetPosition=[0, 0, 0],
-            )
-            '''
 
             # Optional: hide noisy GUI panels
             p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
@@ -61,15 +52,11 @@ class PyBulletWorld:
             p.configureDebugVisualizer(p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0)
             p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, 0)
 
-
             # Create Head Quarter(H.Q.) of the workspace
-            self.spawn_headquarter(position= (0.0, 20.10, 0.0))
+            self.spawn_headquarter(position= (0.0, 60.0, 0.0))
 
             # Create dump points on the boundary of the workspace
             self.spawn_dump_points()
-
-            # Setup camera
-            self.setup_camera()
 
             self.connected = True
 
@@ -105,28 +92,7 @@ class PyBulletWorld:
             raise e
 
 
-
-
-    def setup_camera(self):
-        try: 
-            logger.debug(f"PybulletWorld -> setup_camera(): STARTS")
-
-            p.resetDebugVisualizerCamera(
-                cameraDistance= 80,                                                                              # wide enough to see garbage
-                cameraYaw= 60,
-                cameraPitch= -55,
-                cameraTargetPosition= [60, 60, 0],
-            )
-
-            logger.debug(f"PybulletWorld -> setup_camera(): ENDS")
-            return
-
-
-        except Exception as e:
-            logger.error(f"Error occurred in PybulletWorld -> setup_camera(), error: {e}")
-            raise e
         
-
 
     def shutdown(self):
         try: 
@@ -352,12 +318,15 @@ class PyBulletWorld:
         try:
             target_dump_body_ID: int
 
-            # If there is filled dump point, mark it yellow
+            # If there is filled dump point, mark it mud brown
             if dump_id > 0:
                 target_dump_body_ID = self.dump_point_body_IDs[dump_id]
                 self.last_filled_dump_bodyID = target_dump_body_ID
-                color = [0.38, 0.25, 0.12, 1.0]                                                                 # mud brown
+
+                self.dump_blink_state = not self.dump_blink_state
+                color = [0.38, 0.25, 0.12, 1.0] if self.dump_blink_state else [0.55, 0.35, 0.15, 1.0]           # mud brown, light brown
             
+
             # If there is no filled dump point, then restore the orignal orange color of last marked dump point
             else:
                 target_dump_body_ID = self.last_filled_dump_bodyID

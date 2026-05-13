@@ -2,7 +2,7 @@
 
 
 dump_points:
-  default_capacity: 2
+  default_capacity: 10
 
   points:
     # South edge

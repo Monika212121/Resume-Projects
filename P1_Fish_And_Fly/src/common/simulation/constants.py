@@ -2,8 +2,7 @@
 import pybullet as p
 
 from src.common.utils.mission import MissionPhase
-
-from src.manatee.stage3_action.entity import ManateeMode
+from src.common.entity.manatee_communication import ManateeMode
 
 
 
@@ -37,7 +36,9 @@ STOP_DELAY = {
     MissionPhase.UNLOADING: 0.08,
     MissionPhase.RETURN_HQ: 0.12,
     MissionPhase.DESCEND: 0.12,
-    MissionPhase.ASCEND: 0.12
+    MissionPhase.ASCEND: 0.12,
+    ManateeMode.RESCUE: 0.15,
+    ManateeMode.UNLOADING_SELF_BIN: 0.0
 }
 
 
@@ -52,10 +53,17 @@ FISH_TEXT_COLOR = {
     MissionPhase.UNDERWATER: [0,1,0]            # green
 }
 
+
 MANATEE_TEXT_COLOR = {
-    ManateeMode.COLLECTION: [0,1,0],            # green
-    ManateeMode.RESCUE: [1,0,0]                 # red
+    ManateeMode.IDLE: [1, 1, 1],                        # white
+    ManateeMode.PATROL: [1, 0.5, 0],                    # orange
+    ManateeMode.COLLECTION: [0, 1, 0],                  # green
+    ManateeMode.RESCUE: [1, 0, 0],                      # red
+    ManateeMode.FINAL_SWEEP: [0, 1, 1],                 # cyan
+    ManateeMode.UNLOADING_SELF_BIN: [1, 1, 0]           # yellow
 }
+
+
 
 SHAPE_MAP = {
     "sphere": p.GEOM_SPHERE,

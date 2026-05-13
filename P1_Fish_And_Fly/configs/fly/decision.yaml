@@ -7,5 +7,5 @@ monitoring:
 
 
 dms:
-  threshold: 0.85
+  threshold: 0.75
   cooldown: 60

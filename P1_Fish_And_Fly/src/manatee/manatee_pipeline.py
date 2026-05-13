@@ -2,11 +2,13 @@
 
 import cv2
 
-from typing import List
+from typing import List, Optional
 
 from src.common.logging import logger
+from src.common.entity.position import Waypoint
 from src.common.utils.mission import MissionPhase
 from src.common.io.factory import build_vision_input
+from src.common.entity.machine_types import MachineType
 from src.common.io.folder_video import FolderVideoInput
 from src.common.visualization.visualizer import Visualizer
 from src.common.simulation.sim_bridge import SimulationBridge
@@ -83,7 +85,7 @@ class ManateePipeline:
 
 
 
-    def tick(self, dispatch_order: DispatchOrder) -> DispatchOutcome:
+    def tick(self, dispatch_order: Optional[DispatchOrder]) -> DispatchOutcome:
         try:
             logger.info("********************************************* MANATEE MODULE SYSTEM: STARTS********************************************")
             logger.info(f"ManateePipeline -> tick(), dispatch_order: {dispatch_order}")

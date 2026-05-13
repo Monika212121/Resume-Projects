@@ -19,12 +19,6 @@ class MissionSubTask(Enum):
     RETURN_FROM_HQ = "return fro HQ to the freezed position"
 
 
-class ManateeMode(Enum):
-    IDLE = "rest"
-    SHADOW = "shadow fish machine"
-    COLLECTION = "collection of dump point"
-    RESCUE = "rescue fish machine"
-    FINAL_SWEEP = "unload all 8 dump points"
 
 @dataclass
 class ManateeNavigation:

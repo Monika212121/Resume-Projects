@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from src.common.entity.position import Waypoint
 from src.common.utils.mission import MissionPhase
+from src.common.entity.machine_types import MachineType
 
 
 
@@ -21,8 +22,11 @@ class FishNavigationInfo:
 
 @dataclass
 class DumpEvent:
+    agent: MachineType
+    event_id: int
     dump_id: int
     load_added: float
+    timestamp: float
 
 
 @dataclass

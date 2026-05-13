@@ -2,12 +2,15 @@ import pybullet as p
 
 from typing import List
 
+from streamlit import rerun
+
 from src.common.logging import logger
 from src.common.entity.position import Waypoint
 from src.common.utils.mission import MissionPhase
 from src.common.entity.machine_types import MachineType
 from src.common.utils.mission import get_target_distance
 from src.common.simulation.entity import SimulationConfig
+from src.common.simulation.camera_manager import CameraManager
 from src.common.simulation.object_manager import ObjectManager
 from src.common.simulation.pybullet_world import PyBulletWorld
 from src.common.entity.manatee_communication import ManateeMode
@@ -32,12 +35,18 @@ class SimulationBridge:
         self.world = PyBulletWorld(dump_points_info = dump_points_info)
         self.robot_controller = RobotController()
         self.object_manager = ObjectManager(visual_config = self.spawn_visual_config)
+        self.camera_manager = CameraManager()
 
         self.simulation_started = False
         self.grasp_threshold: float = self.simulation_cfg.grasp_threshold
         self.recording_enabled: bool = self.simulation_cfg.record_output
 
         self.filled_dump_id = -1
+        self.manatee_text_id = -1
+
+        self.fish_phase: MissionPhase = MissionPhase.SURFACE
+        self.manatee_mode: ManateeMode = ManateeMode.IDLE
+        
 
 
     def start(self):
@@ -89,8 +98,42 @@ class SimulationBridge:
             raise e
 
 
+    def display_current_phase(self, curr_mode: ManateeMode):
+        try:
+            pos= self.get_robot_pose(robot= MachineType.MANATEE)
+            if pos is None:
+                logger.error(f"SimulationBridge -> display_current_phase(), Manatee pos is not valid")
+                return 
+            
+            pose = Waypoint(x= pos[0], y= pos[1], z= pos[2])
+            logger.info(f"SimulationBridge -> display_current_phase(), Manatee_position: {pose}")
 
-    def step(self, robot: MachineType, pose: Waypoint, robot_yaw: float, curr_mission_phase: MissionPhase = MissionPhase.SURFACE, curr_operation_mode: ManateeMode = ManateeMode.IDLE):
+            self.manatee_text_id = p.addUserDebugText(
+                curr_mode.name,
+                [pose.x, pose.y, pose.z + 2],
+                textColorRGB= MANATEE_TEXT_COLOR[curr_mode],
+                lifeTime= 0,                                                # persistent
+                replaceItemUniqueId= self.manatee_text_id,
+            )
+            return
+        
+
+        except Exception as e:
+            logger.error(f"Error occurred in SimulationBridge -> display_current_phase(), error: {e}")
+            raise e
+
+
+
+    def step(
+            self, 
+            robot: MachineType, 
+            pose: Waypoint, 
+            robot_yaw: float, 
+            extraTxt: str = "",
+            curr_mission_phase: MissionPhase = MissionPhase.SURFACE, 
+            curr_operation_mode: ManateeMode = ManateeMode.IDLE
+        ):
+
         try:
 
             # Initialize debug ids once
@@ -102,31 +145,35 @@ class SimulationBridge:
 
             # Traverse Fish robot to the given position
             if robot == MachineType.FISH:
-                self.robot_controller.teleport_fish_robot(pose= pose, robot_yaw = robot_yaw, current_mission_phase= curr_mission_phase)
+                self.fish_phase = curr_mission_phase
+                self.robot_controller.teleport_fish_robot(pose= pose, robot_yaw = robot_yaw, current_mission_phase= curr_mission_phase, debug_id= self.fish_text_id)
 
-                # Update the camera view
-                #self.world.update_camera_follow_fish(pose)
+                debug_text = extraTxt if extraTxt != "" else curr_mission_phase.name
 
                 # Updating debug text and displaying above Fish robot
                 self.fish_text_id = p.addUserDebugText(
-                    curr_mission_phase.name,
+                    debug_text,
                     [pose.x, pose.y, pose.z + 2],
                     textColorRGB= FISH_TEXT_COLOR[curr_mission_phase],
-                    lifeTime= 0,                     # persistent
+                    lifeTime= 0,                                                                            # persistent
                     replaceItemUniqueId= self.fish_text_id,
                 )
 
             else:
-                self.robot_controller.teleport_manatee_robot(pose= pose, robot_yaw = robot_yaw)
+                self.manatee_mode = curr_operation_mode
+                self.robot_controller.teleport_manatee_robot(pose= pose, robot_yaw = robot_yaw, current_mission_mode = curr_operation_mode, debug_id= self.manatee_text_id)
+
+                debug_text = extraTxt if extraTxt != "" else curr_operation_mode.name
 
                 # Updating debug text and displaying above Manatee robot
-                self.manatee_text_id = p.addUserDebugText(
-                    curr_operation_mode.name,
-                    [pose.x, pose.y, pose.z + 2],
-                    textColorRGB=[0, 1, 0],
-                    lifeTime=0,                      # persistent
-                    replaceItemUniqueId = self.manatee_text_id
-                )
+                if curr_operation_mode != ManateeMode.UNLOADING_SELF_BIN:
+                    self.manatee_text_id = p.addUserDebugText(
+                        debug_text,
+                        [pose.x, pose.y, pose.z + 2],
+                        textColorRGB=[0, 1, 0],
+                        lifeTime=0,                                                                         # persistent
+                        replaceItemUniqueId = self.manatee_text_id
+                    )
 
             p.stepSimulation()
 
@@ -156,6 +203,15 @@ class SimulationBridge:
             # Updating dump points
             self.world.update_dump_blinking(dump_id= self.filled_dump_id)
 
+            self.camera_manager.update_keyboard_controls()
+
+            fish_pose = self.get_robot_pose(robot= MachineType.FISH)
+            manatee_pose = self.get_robot_pose(robot= MachineType.MANATEE)
+
+            fish_wp = Waypoint(*fish_pose[:3]) if fish_pose else None
+            manatee_wp = Waypoint(*manatee_pose[:3]) if manatee_pose else None
+
+            self.camera_manager.update_camera(fish_pose= fish_wp, manatee_pose= manatee_wp)
             return
 
 
@@ -266,7 +322,9 @@ class SimulationBridge:
                 return False
             
             # Calculate distance between fish machine and target in simulation world
-            target_distance = get_target_distance(current_position= fish_robot_world_position, target_position= target_world_position)
+            fish_pos = Waypoint(fish_robot_world_position[0], fish_robot_world_position[1], fish_robot_world_position[2])
+            target_pos = Waypoint(target_world_position[0], target_world_position[1], target_world_position[2])
+            target_distance = get_target_distance(current_pos= fish_pos, target_pos= target_pos)
 
             # Check if the given target is in grasp range of Fish robot or not
             target_in_range = target_distance < self.grasp_threshold
