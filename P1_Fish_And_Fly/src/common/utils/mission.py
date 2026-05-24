@@ -68,12 +68,9 @@ def is_reached_target(current_position: Waypoint, target_position: Waypoint) -> 
 
 
 
-def get_target_distance(current_position: Tuple[float,float,float,float], target_position: Tuple[float, float, float]) -> float:
+def get_target_distance(current_pos: Waypoint, target_pos: Waypoint) -> float:
     try:
         
-        current_pos = Waypoint(current_position[0], current_position[1], current_position[2])
-        target_pos = Waypoint(target_position[0], target_position[1], target_position[2])
-
         dx = abs(current_pos.x - target_pos.x)
         dy = abs(current_pos.y - target_pos.y)
         dz = abs(current_pos.z - target_pos.z)
@@ -86,4 +83,21 @@ def get_target_distance(current_position: Tuple[float,float,float,float], target
 
     except Exception as e:
         logger.info(f"Error occurred in get_target_distance(), error: {e}")
+        raise e
+    
+
+
+def compute_yaw(current_position: Waypoint, target_position: Waypoint) -> float:
+    try:
+        dx = target_position.x - current_position.x
+        dy = target_position.y - current_position.y
+
+        angle = math.atan2(dy, dx)
+
+        logger.info(f"compute_yaw(): ENDS, angle: {angle}")
+        return angle
+
+
+    except Exception as e:
+        logger.error(f"Error occurred in compute_yaw(), error: {e}")
         raise e

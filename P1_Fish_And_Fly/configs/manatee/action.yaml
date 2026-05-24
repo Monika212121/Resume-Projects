@@ -14,17 +14,17 @@ mission:
 
   navigation:
     start_point:
-      x: 10.0
-      y: 10.0
+      x: 8.0
+      y: 8.0
       z: 0.0
     end_point:
-      x: 110.0
-      y: 110.0
+      x: 112.0
+      y: 112.0
       z: 0.0
     speeds:  
-      surface: 20
-      underwater: 10
-    reach_threshold: 10
+      surface: 2
+      underwater: 2
+    reach_threshold: 1
 
   limits:
     max_operation_retries: 3
@@ -34,7 +34,7 @@ mission:
 
   bin_manager:
     bin_capacity: 10                          # in litres
-    alert_threshold: 0.4
+    alert_threshold: 0.79
     
 # ---------------------------------------------------------------------------------------------------------------------------------------------------
 

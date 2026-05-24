@@ -15,12 +15,12 @@ from src.system.queues import  fish_control_signal_queue, fish_heartbeat_queue, 
 
 
 class AsyncOrchestrator:
-    def __init__(self, fly: FlyPipeline, fish: FishPipeline, manatee: ManateePipeline):
+    def __init__(self, mission_controller: MissionController, fly: FlyPipeline, fish: FishPipeline, manatee: ManateePipeline):
+        self.mission_controller = mission_controller
+        
         self.fly = fly
         self.fish = fish
         self.manatee = manatee
-
-        self.mission_control = MissionController()
 
 
 
@@ -34,13 +34,13 @@ class AsyncOrchestrator:
         logger.info(f"All machines started")
 
         tasks = [
-            asyncio.create_task(run_fish(self.fish, fish_control_signal_queue, fish_heartbeat_queue, self.mission_control)),
-            asyncio.create_task(run_fly(self.fly, fish_control_signal_queue, fish_heartbeat_queue, dispatch_order_queue, dispatch_outcome_queue, self.mission_control)),
-            asyncio.create_task(run_manatee(self.manatee, dispatch_order_queue, dispatch_outcome_queue, self.mission_control)),
+            asyncio.create_task(run_fish(self.fish, fish_control_signal_queue, fish_heartbeat_queue, self.mission_controller)),
+            asyncio.create_task(run_fly(self.fly, fish_control_signal_queue, fish_heartbeat_queue, dispatch_order_queue, dispatch_outcome_queue, self.mission_controller)),
+            asyncio.create_task(run_manatee(self.manatee, dispatch_order_queue, dispatch_outcome_queue, self.mission_controller)),
         ]
 
         # Wait until mission ends
-        await self.mission_control.stop_event.wait()
+        await self.mission_controller.stop_event.wait()
 
         logger.info(f"Mission stopped triggered")
 

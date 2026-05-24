@@ -22,17 +22,17 @@ class BoundaryNavigator:
     def __init__(self, navigation_config: ManateeNavigation):
         self.cfg = navigation_config
 
-        self.start_position = self.cfg.start_point
-        self.end_position = self.cfg.end_point
+        self.start = self.cfg.start_point                                                                   # Workspace coordinates 
+        self.end = self.cfg.end_point
 
-        self.min_x, self.min_y = 8, 8
-        self.max_x, self.max_y = 112, 112
+        self.min_x, self.min_y = self.start.x, self.start.y
+        self.max_x, self.max_y = self.end.x, self.end.y
         self.z = 0
 
-        self.speed = 2.0
+        self.curr_speed = self.cfg.speeds.surface
         self.dt = 1.0
-        self.reach_threshold = 1.0
-        self.step_distance = self.speed * self.dt
+        self.step_distance = self.curr_speed * self.dt                                                      # For now, I am considering same speed in both levels, i.e. surface and underwater
+        self.reach_threshold = self.cfg.reach_threshold
 
         self.corners: List[Waypoint] = self.generate_boundary_loop()
 
@@ -69,7 +69,7 @@ class BoundaryNavigator:
 
             next_position = self.get_next_position_in_boundary_path(target_corner = end_point)
 
-            # Change boundary edge, if Manatee reaches the current edge's end point corner.
+            # Change boundary edge, if Manatee reaches the current edge's end point(corner).
             if self.is_close(a= next_position, b= end_point):
 
                 # Updating current boundary edge

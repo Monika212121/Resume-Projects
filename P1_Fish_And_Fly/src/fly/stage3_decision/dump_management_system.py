@@ -128,7 +128,7 @@ class DumpManagementSystem:
             # urgency_score() should internally consider:
             # - fill percentage
             # - time since last serviced
-            most_urgent = max(filled, key=lambda d: d.urgency_score())
+            most_urgent = max(filled, key=lambda d: d.urgency_score2())
 
             logger.info(f"DMS -> get_most_urgent_filled_dump(), Selected dump: {most_urgent.dump_id}, (fill={most_urgent.fill_pct:.2f})")
             return most_urgent

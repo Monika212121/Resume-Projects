@@ -10,17 +10,19 @@ from src.common.entity.dispatch import DispatchOrder, DispatchOutcome
 from src.common.alerts_and_notifications.alert_types import AlertType
 from src.common.alerts_and_notifications.notifier import AlertNotifier
 from src.common.entity.manatee_communication import ManateeMode, TaskStatus
+from src.common.alerts_and_notifications.notification_types import NotificationType
 from src.common.entity.fish_communication import FishControlSignal, SystemHeartbeat
 
 from src.fly.stage1_controller.flight_controller import FlightController
 from src.fly.stage2_analytics.coverage_tracker import LawnMowerCoverageTracker
 from src.fly.stage3_decision.entity import DumpConfig
 from src.fly.stage3_decision.pipeline import DecisionPipeline
+from src.system.mission_control import MissionController
 
 
 
 class FlyPipeline:
-    def __init__(self, fly_cfg: ConfigurationManager, dump_points: List[DumpConfig], simulation_bridge: SimulationBridge):
+    def __init__(self, mission_controller: MissionController, fly_cfg: ConfigurationManager, dump_points: List[DumpConfig], simulation_bridge: SimulationBridge):
 
         self.dump_points = dump_points
 
@@ -42,6 +44,8 @@ class FlyPipeline:
 
         # NOTE: This flag controls the whole project operation
         self.system_active: bool = True
+
+        self.mission_controller = mission_controller                                                                  # to control the mission
 
 
 
@@ -124,24 +128,49 @@ class FlyPipeline:
 
             dispatch_order = dispatch_outcome.dispatch_order
             manatee_action_status = dispatch_outcome.task_status
+            if dispatch_order is None:
+                logger.error(f"FlyPipeline -> process_manatee_action(): No valid dispatch_order: {dispatch_order}")
+                return
 
-            # Releasing the target dump point, regardless of Manatee's action outcome, if failed, retry can be in next Fly's tick
             dump_info = dispatch_order.dump_info
             target_dump_id = dump_info.dump_id if dump_info else None
             
-            if target_dump_id and (target_dump_id in self.locked_dump_ids):
-                self.locked_dump_ids.remove(target_dump_id)
-                logger.info(f"FlyPipeline- > tick(), releasing lock on dump_id: {target_dump_id}")
 
-            # CASE1: Processing Collection dispatch order outcome
-            if dispatch_order.operation_mode == ManateeMode.COLLECTION:
+            # Processing Dispatch order
 
-                if target_dump_id and manatee_action_status == TaskStatus.COMPLETED:
+            # CASE1: Collection order outcome
+            # NOTE: Releasing the target dump point, only when current task is COMPLETED / FAILED
+            if dispatch_order.operation_mode == ManateeMode.COLLECTION and target_dump_id is not None:
+
+                if manatee_action_status == TaskStatus.COMPLETED:
                     self.decision_pipeline_obj.dms.mark_unloaded(dump_id= target_dump_id)
+                    self.release_dump_lock(dump_id= target_dump_id, reason= "COLLECTION COMPLETED")
+                    self.release_dispatch_key(dump_id= target_dump_id, reason= "COLLECTION COMPLETED")
+
+                    logger.info(f"FlyPipeline -> process_manatee_action(): marked unloaded for dump_id: {target_dump_id}")
+
+                elif manatee_action_status == TaskStatus.RUNNING:
+                    logger.info(f"FlyPipeline -> process_manatee_action(): COLLECTION RUNNING ON dump_id: {target_dump_id}")
+
                 else:
+                    self.release_dump_lock(dump_id= target_dump_id, reason= "COLLECTION FAILED, WILL RETRY")
+                    self.release_dispatch_key(dump_id= target_dump_id, reason= "COLLECTION FAILED, WILL RETRY")
+
                     # Raise alert and the same task will be retry in later tick
                     self.notifier.raise_alert(alert_type= AlertType.MACHINE_FAILURE, message= dispatch_outcome.issue, metadata= {"dump_id": target_dump_id})
                     
+
+            # CASE2: Return order outcome
+            # In both cases I am shutting down the system
+            elif dispatch_order.operation_mode == ManateeMode.RETURN_HQ:
+
+                if manatee_action_status == TaskStatus.COMPLETED:
+                    self.notifier.raise_notification(notification_type= NotificationType.MISSION_COMPLETED, message= "THIS WATER BODY IS CLEANED", metadata= None)
+                else:
+                    self.notifier.raise_alert(alert_type= AlertType.HQ_RETURN_FAIL, message= "NEED MANUAL INTERVENTION", metadata= None)
+
+                self.mission_controller.stop()
+
 
             logger.info(f"FlyPipeline -> process_manatee_action(): ENDS")
             return
@@ -151,6 +180,41 @@ class FlyPipeline:
             logger.error(f"Error occurred in FlyPipeline -> tick(), error: {e}")
             raise e
         
+
+
+    def release_dump_lock(self, dump_id: int, reason: str = ""):
+        try:
+
+            # Release lock on dump point, so that machines can interact with it normally
+            if (dump_id is not None) and (dump_id in self.locked_dump_ids):
+                self.locked_dump_ids.remove(dump_id)
+
+                logger.info(f"FlyPipeline- > release_dump_lock(), releasing lock on dump_id: {dump_id}, reason: {reason}")
+
+
+        except Exception as e:
+            logger.error(f"Error occurred in FlyPipeline -> release_dump_lock(), error: {e}")
+            raise e
+
+
+
+    def release_dispatch_key(self, dump_id: int, reason: str = ""):
+        try:
+
+            # Removing DONE dispatch order from active dispatch order memory
+            dispatch_key = f"COLLECTION:{dump_id}"
+
+            if dispatch_key in self.decision_pipeline_obj.active_dispatch_keys:
+                self.decision_pipeline_obj.active_dispatch_keys.remove(dispatch_key)
+
+            logger.info(f"FlyPipeline- > release_dispatch_key(), for dump_id: {dump_id}, reason: {reason}")
+            return
+        
+
+        except Exception as e:
+            logger.error(f"Error occurred in FlyPipeline -> release_dispatch_key(), error: {e}")
+            raise e
+
 
 
     def is_system_active(self) -> bool:

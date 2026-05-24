@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import pybullet as p
+from pathlib import Path
 
 from src.common.entity.position import Waypoint
 from src.common.io.video_writer import VideoWriterManager
@@ -9,7 +10,7 @@ from src.common.io.video_writer import VideoWriterManager
 
 class SimulationRecorder:
     def __init__(self):
-        self.video_writer = VideoWriterManager(output_dir_path="outputs/sim", fps=10)
+        self.video_writer = VideoWriterManager(output_dir_path=Path("outputs/sim"), fps=10)
         self.initialized = False
 
         # Basic camera setup (you can tweak later)

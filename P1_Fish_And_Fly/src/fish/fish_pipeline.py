@@ -281,6 +281,16 @@ class FishPipeline:
             # Logging target object's final action result, in the `garbage.csv` file.
             self.result_logger.object_logger.log_selected_target(selected_object= selected_target, feedback_command = feedback_command)   
 
+            # TODO: REMOVE AFTER RECORDING RESCUE CASE
+            '''
+            if len(collected_objects) == 8:
+                logger.info(f"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   TICK  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@, tick_count: {self.mission_planner_obj.tick_count}")
+            need_help_d = False
+            if self.mission_planner_obj.tick_count > 65:
+                need_help_d = True
+            '''
+
+
             # If mission is in progress, then create and emit "No issue" heartbeat signal
             heartbeat = SystemHeartbeat.now(
                 mission_phase= self.mission_planner_obj.phase,
@@ -290,7 +300,7 @@ class FishPipeline:
                 need_help= action_feedback.need_manatee_help
             )
 
-            logger.info(f"The current heartbeat of this tick is: {heartbeat}")
+            logger.info(f"FishPipeline -> tick(), heartbeat: {heartbeat}, tick_count: {self.mission_planner_obj.tick_count}")
             logger.info("********************************************FISH MODULE SYSTEM: ENDS**********************************************")
             return heartbeat
 

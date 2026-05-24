@@ -61,3 +61,7 @@ class DumpPointState:
         time_factor = min(self.time_since_service(), 300.0) / 300.0
         return (self.fill_pct * 0.7) + (time_factor * 0.3)
     
+
+    def urgency_score2(self) -> float:
+        return self.fill_pct
+    

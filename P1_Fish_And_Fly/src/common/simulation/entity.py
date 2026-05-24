@@ -70,3 +70,12 @@ class SimulationConfig:
 class ManateeSimulationConfig:
     visualization: SimulationVisualization
     spawning: SpawningConfig
+
+
+
+class CameraMode(Enum):
+    OVERVIEW = 1
+    FISH_FOLLOW = 2
+    MANATEE_FOLLOW = 3
+    CINEMATIC = 4
+    TOP_VIEW = 5

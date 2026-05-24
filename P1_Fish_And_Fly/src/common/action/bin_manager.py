@@ -76,7 +76,7 @@ class BinManager:
         :rtype: bool
         """
         try: 
-            logger.debug(f"BinManager -> is_bin_full(): STARTS, current load: {self.current_load}")
+            logger.info(f"BinManager -> is_bin_full(): STARTS, before cleaning, current load: {self.current_load}")
 
             reached_max_capacity = self.usage_ratio() >= self.alert_threshold
             if reached_max_capacity:
@@ -84,7 +84,7 @@ class BinManager:
                 logger.info(f"BinMananger -> is_bin_full(), Bin reached its max capacity. Needs to unload.")
 
 
-            logger.debug(f"BinManager -> is_bin_full(): ENDS")
+            logger.info(f"BinManager -> is_bin_full(): ENDS, after cleaning, current load: {self.current_load}")
             return reached_max_capacity
 
 
