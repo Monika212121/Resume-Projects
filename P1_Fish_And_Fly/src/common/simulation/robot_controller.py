@@ -272,10 +272,10 @@ class RobotController:
         if manatee_pos: 
             start = Waypoint(manatee_pos[0], manatee_pos[1], manatee_pos[2])
 
-        if current_mission_mode in [ManateeMode.RESCUE, ManateeMode.UNLOADING_SELF_BIN]:
-            logger.info(f"RobotController -> teleport_manatee_robot(): INSIDE RESCUE BLOCK")
+        if current_mission_mode in [ManateeMode.RESCUE, ManateeMode.UNLOADING_SELF_BIN, ManateeMode.RETURN_HQ]:
+            logger.info(f"RobotController -> teleport_manatee_robot(): INSIDE slow teleport BLOCK")
             self.curr_mode = current_mission_mode
-            inter_steps = 50 if self.curr_mode == ManateeMode.RESCUE else 10
+            inter_steps = 50 if self.curr_mode in [ManateeMode.RESCUE, ManateeMode.RETURN_HQ] else 10
 
             # Moves slowly towards the target destination
             self._slow_teleport(

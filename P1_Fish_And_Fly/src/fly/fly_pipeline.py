@@ -1,6 +1,5 @@
 # Aim: This is Fly machine entry-point
 
-from ast import dump
 from typing import List, Tuple, Set, Optional
 
 from src.common.logging import logger
@@ -11,17 +10,19 @@ from src.common.entity.dispatch import DispatchOrder, DispatchOutcome
 from src.common.alerts_and_notifications.alert_types import AlertType
 from src.common.alerts_and_notifications.notifier import AlertNotifier
 from src.common.entity.manatee_communication import ManateeMode, TaskStatus
+from src.common.alerts_and_notifications.notification_types import NotificationType
 from src.common.entity.fish_communication import FishControlSignal, SystemHeartbeat
 
 from src.fly.stage1_controller.flight_controller import FlightController
 from src.fly.stage2_analytics.coverage_tracker import LawnMowerCoverageTracker
 from src.fly.stage3_decision.entity import DumpConfig
 from src.fly.stage3_decision.pipeline import DecisionPipeline
+from src.system.mission_control import MissionController
 
 
 
 class FlyPipeline:
-    def __init__(self, fly_cfg: ConfigurationManager, dump_points: List[DumpConfig], simulation_bridge: SimulationBridge):
+    def __init__(self, mission_controller: MissionController, fly_cfg: ConfigurationManager, dump_points: List[DumpConfig], simulation_bridge: SimulationBridge):
 
         self.dump_points = dump_points
 
@@ -43,6 +44,8 @@ class FlyPipeline:
 
         # NOTE: This flag controls the whole project operation
         self.system_active: bool = True
+
+        self.mission_controller = mission_controller                                                                  # to control the mission
 
 
 
@@ -156,6 +159,18 @@ class FlyPipeline:
                     # Raise alert and the same task will be retry in later tick
                     self.notifier.raise_alert(alert_type= AlertType.MACHINE_FAILURE, message= dispatch_outcome.issue, metadata= {"dump_id": target_dump_id})
                     
+
+            # CASE2: Return order outcome
+            # In both cases I am shutting down the system
+            elif dispatch_order.operation_mode == ManateeMode.RETURN_HQ:
+
+                if manatee_action_status == TaskStatus.COMPLETED:
+                    self.notifier.raise_notification(notification_type= NotificationType.MISSION_COMPLETED, message= "THIS WATER BODY IS CLEANED", metadata= None)
+                else:
+                    self.notifier.raise_alert(alert_type= AlertType.HQ_RETURN_FAIL, message= "NEED MANUAL INTERVENTION", metadata= None)
+
+                self.mission_controller.stop()
+
 
             logger.info(f"FlyPipeline -> process_manatee_action(): ENDS")
             return

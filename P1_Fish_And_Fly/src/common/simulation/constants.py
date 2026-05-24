@@ -38,7 +38,8 @@ STOP_DELAY = {
     MissionPhase.DESCEND: 0.12,
     MissionPhase.ASCEND: 0.12,
     ManateeMode.RESCUE: 0.15,
-    ManateeMode.UNLOADING_SELF_BIN: 0.0
+    ManateeMode.UNLOADING_SELF_BIN: 0.0,
+    ManateeMode.RETURN_HQ: 1.0
 }
 
 
@@ -46,21 +47,21 @@ FISH_TEXT_COLOR = {
     MissionPhase.ABORT: [1,0,0],                # red
     MissionPhase.FAILED: [1,0,0],               # red
     MissionPhase.UNLOADING: [1,1,0],            # yellow
-    MissionPhase.RETURN_HQ: [0,1,0],            # green
-    MissionPhase.DESCEND: [0,1,0],              # green
-    MissionPhase.ASCEND: [0,1,0],               # green
-    MissionPhase.SURFACE: [0,1,0],              # green
-    MissionPhase.UNDERWATER: [0,1,0]            # green
+    MissionPhase.RETURN_HQ: [1,1,1],            # white
+    MissionPhase.DESCEND: [1,1,1],              # white
+    MissionPhase.ASCEND: [1,1,1],               # white
+    MissionPhase.SURFACE: [1,1,1],              # white
+    MissionPhase.UNDERWATER: [1,1,1]            # white
 }
 
 
 MANATEE_TEXT_COLOR = {
     ManateeMode.IDLE: [1, 1, 1],                        # white
-    ManateeMode.PATROL: [1, 0.5, 0],                    # orange
-    ManateeMode.COLLECTION: [0, 1, 0],                  # green
+    ManateeMode.PATROL: [1, 1, 1],                      # white
+    ManateeMode.COLLECTION: [1, 1, 1],                  # white
     ManateeMode.RESCUE: [1, 0, 0],                      # red
-    ManateeMode.FINAL_SWEEP: [0, 1, 1],                 # cyan
-    ManateeMode.UNLOADING_SELF_BIN: [1, 1, 0]           # yellow
+    ManateeMode.UNLOADING_SELF_BIN: [1, 1, 0],          # yellow
+    ManateeMode.RETURN_HQ: [0, 0, 1]                    # blue
 }
 
 

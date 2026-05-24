@@ -57,17 +57,16 @@ class DispatchOrder:
             timestamp= time.time(),
             fish_position= fish_position,
         )
-    
+        
     @staticmethod
-    def create_final_sweep_order(dispatch_id: int, all_dump_points_state: List[DumpPointState]):
+    def create_return_order(dispatch_id: int):
         return DispatchOrder(
             dispatch_id= dispatch_id,
             source= "Fly",
-            operation_mode= ManateeMode.FINAL_SWEEP,
-            timestamp= time.time(),
-            all_dumps_state= all_dump_points_state
-        )
-    
+            operation_mode= ManateeMode.RETURN_HQ,
+            timestamp= time.time()
+        )  
+
 
 @dataclass
 class DispatchOutcome:

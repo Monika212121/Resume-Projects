@@ -170,7 +170,7 @@ class SimulationBridge:
                     self.manatee_text_id = p.addUserDebugText(
                         debug_text,
                         [pose.x, pose.y, pose.z + 2],
-                        textColorRGB=[0, 1, 0],
+                        textColorRGB=[1, 1, 1],                                                             # white for normal operation modes
                         lifeTime=0,                                                                         # persistent
                         replaceItemUniqueId = self.manatee_text_id
                     )

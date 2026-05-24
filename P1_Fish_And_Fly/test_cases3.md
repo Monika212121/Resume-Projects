@@ -1142,6 +1142,8 @@ That’s excellent.
 Now these are the “advanced systems engineering” scenarios.
 
 🧠 IMPORTANT MISSING TEST CASES
+
+
 16. PARTIAL OCCLUSION DETECTION
 
 Priority: HIGH
@@ -1162,6 +1164,8 @@ Why Important
 Shows:
 
 real-world perception robustness
+
+
 17. FALSE POSITIVE REJECTION
 
 Priority: HIGH
@@ -1184,6 +1188,8 @@ Recruiters LOVE this.
 Because:
 
 avoiding bad decisions > making decisions
+
+
 18. DYNAMIC OBSTACLE AVOIDANCE
 
 Priority: VERY HIGH
@@ -1277,6 +1283,7 @@ Why Important
 Shows:
 
 intelligent exploration completeness
+
 22. HAZARD SATURATION SCENARIO
 
 Priority: OPTIONAL BUT IMPRESSIVE
@@ -1296,6 +1303,8 @@ Stress test.
 Shows:
 
 system stability under complexity
+
+
 23. SIMULATION RECOVERY AFTER STEP FAILURE
 
 Priority: VERY HIGH
@@ -1318,6 +1327,8 @@ fault-tolerant robotics execution
 
 VERY professional engineering signal.
 
+
+
 24. MANATEE ORIENTATION CONSISTENCY
 
 Priority: HIGH
@@ -1334,6 +1345,8 @@ Why Important
 Makes simulation feel:
 
 believable
+
+
 25. CAMERA SYSTEM DEMO
 
 Priority: OPTIONAL

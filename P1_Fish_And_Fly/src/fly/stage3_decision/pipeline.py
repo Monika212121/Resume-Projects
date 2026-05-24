@@ -77,7 +77,7 @@ class DecisionPipeline:
                 self.processed_dump_eventIDs.add(event.event_id)
 
 
-            # CASE2: COLLECTION ORDER -> If a dump point exceeds its capacity threshold, empty the filled dump point
+            # CASE2: COLLECTION ORDER -> If a dump point exceeds its capacity threshold, empty the filled dump point            # refer ACTION.MD()
             target_dump = self.dms.get_most_urgent_filled_dump()
             if target_dump:
                 logger.info(f"DecisionPipeline -> run(), INSIDE COLLECTION ORDER CREATION, filled target dump: {target_dump}")
@@ -97,6 +97,29 @@ class DecisionPipeline:
 
                 self.active_dispatch_keys.add(dispatch_key)
                 self.dispatch_counter += 1
+
+                logger.info(f"DecisionPipeline -> run(), COLLECTION ORDER CREATED, Fish machine state: {state_deltas.fish_state}, heartbeat: {heartbeat}")
+                return (state_deltas, dispatch_order)
+            
+
+            # CASE3: RETURN ORDER -> If Fish machine returned to HQ, after successfully completing the mission
+            if heartbeat.mission_phase == MissionPhase.DONE:
+                logger.info(f"DecisionPipeline -> run(), INSIDE RETURN_HQ ORDER CREATION")
+
+                dispatch_key = f"RETURN_HQ"
+
+                if dispatch_key in self.active_dispatch_keys:                                              # avoid duplicate collection orders
+                    logger.info(f"DecisionPipeline -> run(), dispatch_id: {dispatch_id} already created for RETURN_HQ")
+                    return (state_deltas, dispatch_order)  
+                
+                dispatch_order = DispatchOrder.create_return_order(dispatch_id= dispatch_id)
+
+                self.active_dispatch_keys.add(dispatch_key)
+                self.dispatch_counter += 1
+
+                logger.info(f"DecisionPipeline -> run(), RETURN ORDER CREATED, Fish machine state: {state_deltas.fish_state}, heartbeat: {heartbeat}")
+                return (state_deltas, dispatch_order)
+            
 
             logger.info(f"DecisionPipeline -> run(): ENDS, dispatch_order: {dispatch_order}")
             return (state_deltas, dispatch_order)

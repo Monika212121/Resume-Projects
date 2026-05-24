@@ -200,10 +200,14 @@ class MissionPlanner:
                     self.cleaned_dump_ids.add(target_dump_id)
                     cleaned_dump_ids.append(target_dump_id)
                     self.sim_bridge.filled_dump_id = -1
+
+                    self.unfinished_dispatch_order = None
                     
                 else:
                     logger.info(f"COLLECTION RUNNING for dump_id: {target_dump_id}")
                     operation_issue = "No issue, WIP"
+
+                    self.unfinished_dispatch_order = self.active_dispatch_order                                         # refer ACTION.MD()
                 
 
                 dispatch_result = DispatchOutcome(
@@ -225,7 +229,8 @@ class MissionPlanner:
             elif operation_mode == ManateeMode.RESCUE:
                 logger.info("MODE = RESCUE")
 
-                operation_status = self.handle_rescue(fish_position= self.active_dispatch_order.fish_position, all_dump_state= self.active_dispatch_order.all_dumps_state)
+                operation_status = self.handle_rescue(fish_position= self.active_dispatch_order.fish_position)
+
                 if operation_status == TaskStatus.FAILED:
                     operation_issue = "RESCUE failed due to simulation error"
                     logger.error("RESCUE FAILED")
@@ -234,29 +239,46 @@ class MissionPlanner:
                 elif operation_status == TaskStatus.COMPLETED:
                     logger.info("RESCUE COMPLETED")
                     self.active_dispatch_order = None
-                    self.mode = ManateeMode.IDLE
+
+                    # Continuing executing interrupted task, due to RESCUE mission
+                    logger.info(f"------------------------------CALLING MANATEE TICK() AGAIN: STARTS -------------------------------")
+                    dispatch_outcome = self.tick(dispatch_order= None)
+                    logger.info(f"------------------------------CALLING MANATEE TICK() AGAIN: ENDS ---------------------------------")
+
+                    return dispatch_outcome
 
                 else:
                     logger.info("RESCUE RUNNING")
 
 
-            # FINAL SWEEP
-            elif operation_mode == ManateeMode.FINAL_SWEEP:
-                logger.info("MODE = FINAL SWEEP")
-                operation_status, cleaned_dump_ids = self.handle_final_sweep(all_dump_state= self.active_dispatch_order.all_dumps_state)
+            # RETURN HQ after mission completes
+            elif operation_mode == ManateeMode.RETURN_HQ:
+                logger.info("MODE = RETURN HQ")
+                operation_status = self.handle_return()
 
                 if operation_status == TaskStatus.FAILED:
-                    operation_issue = "FINAL SWEEP failed due to simulation error"
-                    logger.error("FINAL SWEEP FAILED")
-                    self.active_dispatch_order = None
+                    operation_issue = "RETURN HQ failed due to simulation error"
+                    logger.error("RETURN HQ FAILED")
 
                 elif operation_status == TaskStatus.COMPLETED:
-                    logger.info("FINAL SWEEP COMPLETED")
-                    self.active_dispatch_order = None
+                    logger.info("RETURN HQ COMPLETED")
                     self.mode = ManateeMode.IDLE
 
                 else:
-                    logger.info("FINAL SWEEP RUNNING")
+                    logger.info("RETURN HQ RUNNING")
+
+                dispatch_result = DispatchOutcome(
+                    dispatch_order= self.active_dispatch_order,
+                    task_status= operation_status,
+                    issue= operation_issue,
+                    cleaned_dump_ids= cleaned_dump_ids
+                )
+
+                if operation_status in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
+                    self.active_dispatch_order = None
+
+                logger.info(f"MissionPlanner -> tick(), dispatch_result: {dispatch_result}")
+                return dispatch_result
 
 
             # Unknown mode
@@ -414,7 +436,6 @@ class MissionPlanner:
 
             elif current_task == MissionSubTask.COLLECT_DUMP:
                 logger.info(f"MissionPlaneer -> handle_collection(), COLLECT_DUMP")
-                #self.bin_manager.add_garbage(load_added= dump_info.dump_current_load)
 
                 # Advancing to next sub-task of the Collection mission
                 self.mission_state["sub_task"] = MissionSubTask.RETURN_TO_PROJECTED_BOUNDARY_POINT
@@ -527,7 +548,6 @@ class MissionPlanner:
                 # Advancing to next sub-task of the Unloading mission, resuming its cleaning dump points mission
                 if self.navigator.is_close(a= self.navigator.current_position, b= freezed_position):
                     logger.info(f"MisssionPlanner -> unload_manatee_bin(): MANATEE returned to the freezed position: {freezed_position}")
-                    #self.mission_state["sub_task"] = freezed_current_task
 
                     # Reset Manatee's bin and freezed checkpoint
                     self.bin_manager.reset_bin()
@@ -590,20 +610,26 @@ class MissionPlanner:
 
 
 
-    def handle_rescue(self, fish_position: Optional[Waypoint], all_dump_state: List[DumpPointState]) -> bool:
+    def handle_rescue(self, fish_position: Optional[Waypoint]) -> TaskStatus:
         try:
             logger.info(f"MissionPlanner -> handle_rescue(): STARTS")
             self.mode = ManateeMode.RESCUE
             
             if fish_position is None:
-                logger.info(f"MissionPlanner -> handle_rescue(), There is no valid fish position provided.")
-                return False
-                               
+                logger.error(f"MissionPlanner -> handle_rescue(), There is no valid fish position provided.")
+                return TaskStatus.FAILED
+
+            if self.freezed_state is None:        
+                self.freezed_state = {
+                    "operation_mode": self.active_dispatch_order.operation_mode if self.active_dispatch_order else ManateeMode.IDLE,
+                    "current_position": self.navigator.current_position
+                }
+
             # Traverse towards the Fish machine
             reached_fish = self.simulate_step_forward2(target_position= fish_position)
             if not reached_fish:
                 logger.error(f"MissionPlanner -> handle_rescue(), Error occurred in reaching Fish")
-                return False
+                return TaskStatus.FAILED
 
             # Manatee extract Fish machine inside it
             self.sim_bridge.robot_controller.remove_robot(MachineType.FISH)
@@ -612,68 +638,26 @@ class MissionPlanner:
             reached_HQ = self.simulate_step_forward2(target_position= self.HQ_point)
             if not reached_HQ:
                 logger.error(f"MissionPlanner -> handle_rescue(), Error occurred in reaching the HQ")
-                return False
+                return TaskStatus.FAILED
 
-            logger.info(f"^^^^^^^^^^^^^^^^^^^FINAL SWEEP^^^^^^^^^^^^^^^^^^^^^^^^^")
-            # After Fish machine is extracted safely to HQ, perform final sweep to unload collected garbage from all 8 dump points          
-            final_sweep_success, cleaned_dump_points = self.handle_final_sweep(all_dump_state= all_dump_state)
-            if not final_sweep_success or (len(cleaned_dump_points) != len(all_dump_state)):
-                logger.error(f"MissionPlanner -> handle_rescue(), Error occurred in final sweep, all dump points are not cleaned or Manatee couldn't reach HQ.")
-                return False
+            # Returning back to the freezed position
+            logger.info(f"MissionPlanner -> handle_rescue(), freezed state: {self.freezed_state}")
+            
+            freezed_pos = self.freezed_state["current_position"]
+            reached_freezed = self.simulate_step_forward2(target_position= freezed_pos)
+            if not reached_freezed:
+                logger.error(f"MissionPlanner -> handle_rescue(), Error occurred in reaching the freezed position")
+                return TaskStatus.FAILED
 
             logger.info(f"MissionPlanner -> handle_rescue(): ENDS")
-            return True
+            return TaskStatus.COMPLETED
         
 
         except Exception as e:
             logger.error(f"Error occurred in MissionPlanner -> handle_rescue(), error: {e}")
             raise e
-        
-
-
-    def handle_final_sweep(self, all_dump_state: List[DumpPointState]) -> Tuple[bool,List[int]]:
-        try:
-            logger.info(f"MissionPlanner -> handle_final_sweep(): STARTS")
-            self.mode = ManateeMode.FINAL_SWEEP
-
-            final_sweep_success: bool = False                                                              
-            cleaned_dump_points: List[int] = []                                                             # List of cleaned dump ids
-
-            if len(all_dump_state) == 0:
-                logger.info(f"MissionPlanner -> handle_final_sweep(): There is not a single dump provided.")
-                return (final_sweep_success, cleaned_dump_points)
-
-            # Collect garbage from all 8 dump points
-            for dump in all_dump_state:
-                dump_info = DumpInfo(dump_id= dump.dump_id, dump_position= dump.position, dump_current_load= dump.current_load)
-
-                if dump.current_load > 0:
-                    collected_garbage = self.handle_collection(dump_info= dump_info) 
-                    if not collected_garbage: 
-                        logger.info(f"handle_final_sweep(), Collection failed for dump_id: {dump_info.dump_id}")
-                        continue
-
-                # If dump point is empty or unloaded by Manatee, mark it as cleaned
-                cleaned_dump_points.append(dump_info.dump_id)
-
-            # After cleaning of last dump point, return back to the HQ.
-            reached_HQ = self.execute_navigation_to(destination= self.HQ_point)
-            if not reached_HQ:
-                logger.info(f"MissionPlanner -> handle_final_sweep(), Cleaning is done but Error occurred in reaching the HQ")
-                return (final_sweep_success, cleaned_dump_points)
-            
-            # Marking the final sweep mission as success, if Manatee returned to the HQ safely.
-            final_sweep_success = True
-
-            logger.info(f"MissionPlanner -> handle_final_sweep(): ENDS, cleaned dumps: {cleaned_dump_points}")
-            return (final_sweep_success, cleaned_dump_points)
 
         
-        except Exception as e:
-            logger.error(f"Error occurred in MissionPlanner -> handle_final_sweep(), error: {e}")
-            raise e
-        
-      
 
     def execute_navigation_to(self, destination: Waypoint, return_back: bool = False) -> bool:
         try:
@@ -745,4 +729,27 @@ class MissionPlanner:
 
         except Exception as e:
             logger.error(f"Error occurred in MissionPlanner -> execute_navigation_to(), error: {e}")
+            raise e
+
+
+
+    # RETURN HQ
+    def handle_return(self) -> TaskStatus:               
+        try:
+            logger.info(f"MissionPlanner -> handle_return(): STARTS")
+
+            self.mode = ManateeMode.RETURN_HQ
+            
+            # Traverse to the HQ
+            reached_HQ = self.simulate_step_forward2(target_position= self.HQ_point)
+            if not reached_HQ:
+                logger.error(f"MissionPlanner -> handle_rescue(), Error occurred in Manatee reaching the HQ")
+                return TaskStatus.FAILED
+            
+            logger.info(f"MissionPlanner -> handle_return(): ENDS, MISSION completed successfully")
+            return TaskStatus.COMPLETED
+        
+
+        except Exception as e:
+            logger.error(f"Error occurred in MissionPlanner -> handle_return(), error: {e}")
             raise e

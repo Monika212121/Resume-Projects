@@ -15,6 +15,7 @@ from src.fish.fish_pipeline import FishPipeline
 from src.manatee.manatee_pipeline import ManateePipeline
 
 from src.system.orchestrator import AsyncOrchestrator
+from src.system.mission_control import MissionController
 
 
 
@@ -31,10 +32,13 @@ async def main_async():
         dump_points = common_config.get_dump_points_config()
         simulation_config = common_config.get_simulation_config()
 
+
         # Instantiating the main pipelines
-        simulation_obj = SimulationBridge(simulation_config= simulation_config, dump_points_info= dump_points)
+        mission_controller = MissionController()
         
-        fly_machine = FlyPipeline(fly_cfg= fly_config, dump_points = dump_points, simulation_bridge = simulation_obj)
+        simulation_obj = SimulationBridge(simulation_config= simulation_config, dump_points_info= dump_points)
+
+        fly_machine = FlyPipeline(mission_controller= mission_controller, fly_cfg= fly_config, dump_points = dump_points, simulation_bridge = simulation_obj)
         fish_machine = FishPipeline(fish_cfg= fish_config, dump_points = dump_points, simulation_bridge = simulation_obj)
         manatee_machine = ManateePipeline(manatee_cfg= manatee_config, dump_points = dump_points, simulation_bridge = simulation_obj)
 
@@ -46,6 +50,7 @@ async def main_async():
 
         # System orchestrator
         orchestrator = AsyncOrchestrator(
+            mission_controller= mission_controller,
             fly = fly_machine,
             fish = fish_machine,
             manatee = manatee_machine
