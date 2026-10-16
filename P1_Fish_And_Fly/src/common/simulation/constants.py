@@ -31,7 +31,7 @@ SLOW_TELEPORT_PHASES = {
 
 
 STOP_DELAY = {
-    MissionPhase.ABORT: 0.08,
+    MissionPhase.ABORT: 0.01,
     MissionPhase.FAILED: 0.08,
     MissionPhase.UNLOADING: 0.08,
     MissionPhase.RETURN_HQ: 0.12,

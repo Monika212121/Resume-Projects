@@ -328,3 +328,14 @@ Exposed phases: SURFACE / UNDERWATER / DONE
 - Now, if the fish robot cannot return to the `freezed start point`, then I am marking this `unload mission as FAILURE` and I mark this `dumpEvent = None`.
 - Even if the dumping is `DONE` and problem occurred while returning to start point, I am still marking this `unload sub-mission as FAILURE` and I mark `DumpEvent = None`.
 - Secondly, if there is any issue occurred during abort_mission() and the fish robot cannot reach to the HQ, then `need_manatee_help = True` will be returned, else `False`.
+
+
+14.) Obstacle avoidance for navigation hazards
+
+```Dynamic Potential-Field Navigation Correction```
+
+- Navigation hazards generate localized reactive avoidance zones during active traversal
+- Dynamic repulsion-based steering correction redirects the fish agent away from collision-risk regions
+- Traversal continuity is preserved through smooth trajectory adaptation instead of abrupt path interruption
+- Autonomous navigation resumes toward mission waypoints after safe hazard clearance
+

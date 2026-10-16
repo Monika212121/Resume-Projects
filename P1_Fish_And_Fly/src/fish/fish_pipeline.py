@@ -285,8 +285,9 @@ class FishPipeline:
             '''
             if len(collected_objects) == 8:
                 logger.info(f"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   TICK  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@, tick_count: {self.mission_planner_obj.tick_count}")
+            
             need_help_d = False
-            if self.mission_planner_obj.tick_count > 65:
+            if self.mission_planner_obj.tick_count > 21:
                 need_help_d = True
             '''
 

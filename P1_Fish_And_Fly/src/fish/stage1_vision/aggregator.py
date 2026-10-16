@@ -1,10 +1,10 @@
 from typing import List, Dict, Tuple, Set
 
 from src.common.logging import logger
+from src.common.vision.entity import EntityRole
 from src.common.vision.entity import Detection, TrackedObject, TrackedState, AggregationConfig
 
 from src.fish.stage2_decision.entity import CategorizedObjects, LifeCycleCommand, LifeCycleAction
-
 
 
 class ObjectAggregator:

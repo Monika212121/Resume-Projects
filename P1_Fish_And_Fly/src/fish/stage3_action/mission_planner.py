@@ -158,7 +158,7 @@ class MissionPlanner:
                 target_id = action_intent.track_id if action_intent else -1                                                             # refer ACTION_NOTES.md(11)  
 
                 # NOTE: If target_id == -1, then it means no valid target is present, else it means the target is too far                         
-                next_robot_position = self.navigator.get_next_position_in_path()
+                next_robot_position = self.navigator.get_next_position_in_path(hazard_objects = categorized_objects.navigation_hazards)
 
                 # SIMULATION for moving 1 step forward
                 moved_in_sim = self.simulate_step_forward(target_position= next_robot_position)

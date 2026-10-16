@@ -3,7 +3,7 @@
 # This will be replaced by depth-aware and flow-aware planning in later versions.
 
 import math
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
 from src.common.logging import logger
 from src.common.action.entity import Speeds
@@ -36,6 +36,18 @@ class PathNavigator:
         self.trajectory: list[Dict[Any, Any]] = []
         self.last_fish_position: Waypoint = Waypoint(0.0, 0.0, 0.0)                           
         self.curr_fish_direction: int = 1                                                                   # Maintaining a direction flag for garbage object simulation
+
+        self.hazard_detection_radius = 2.5
+        self.hazard_safe_distance = 18.0
+        self.avoidance_strength = 2.0
+
+        self.in_avoidance_mode = False
+        self.avoidance_waypoint = None
+        self.avoidance_return_index = 0
+        self.avoidance_offset_distance = 8.0
+
+        self.return_waypoint = None
+        self.returning_to_path = False
 
 
 
@@ -177,7 +189,7 @@ class PathNavigator:
     
 
 
-    def get_next_position_in_path(self) -> Waypoint:
+    def get_next_position_in_path(self, hazard_objects: List[FishFrameObject]) -> Waypoint:
         """
         Navigation is the authoritative source of robot motion.
 
@@ -192,7 +204,7 @@ class PathNavigator:
         :rtype: bool
         """
         try:
-            logger.debug(f"PathNavigator -> get_next_position_in_path(): STARTS")
+            logger.info(f"PathNavigator -> get_next_position_in_path(): STARTS")
          
             # 1. Recognize the next target waypoint in the set path.
             target_waypoint = self.path[self.current_index]
@@ -237,11 +249,25 @@ class PathNavigator:
                 logger.info(f"PathNavigator -> get_next_position_in_path(): New distance between current and target: {distance}")
 
 
-            # 5. Normalize directions
+            # 5. Normalize goal directions
             ux = dx / distance
             uy = dy / distance
             uz = dz / distance
 
+            logger.info(f"PathNavigator -> Direction vectors, before adding avoidance vector: {(ux, uy, uz)}")
+
+            # Adding repulsive avoidance vector in case of navigation hazard is present                     # refer ACTION_NOTE.md(14)
+            if len(hazard_objects) > 0:
+                self.create_avoidance_waypoint(hazard_objects=hazard_objects)
+
+            if self.in_avoidance_mode:
+                avoidance_position = self.handle_avoidance_navigation()
+                
+                if avoidance_position is not None:
+                    logger.info("Returning avoidance navigation position")
+                    return avoidance_position
+    
+            
             # 6. Incremental motion
             new_x = self.current_position.x + ux * step_distance
             new_y = self.current_position.y + uy * step_distance
@@ -253,13 +279,211 @@ class PathNavigator:
             # 8. Find Fish machine's current navigation direction (USED IN SIMULATION, garbage spawning)
             self.update_fish_direction(fish_delta_x = dx)
             
-            logger.info(f"PathNavigator -> get_next_position(): ENDS, new_position: {new_position}")
+            logger.info(f"PathNavigator -> get_next_position_in_path(): ENDS, new_position: {new_position}")
             return new_position
         
         
         except Exception as e:
             logger.error(f"Error occurred in PathNavigator -> get_next_position_in_path(), error: {e}")
             raise e
+
+
+
+    def handle_avoidance_navigation(self):
+        try:
+
+            if not self.in_avoidance_mode or self.avoidance_waypoint is None:
+                return None
+
+            dx = (
+                self.avoidance_waypoint.x -
+                self.current_position.x
+            )
+
+            dy = (
+                self.avoidance_waypoint.y -
+                self.current_position.y
+            )
+
+            dz = (
+                self.avoidance_waypoint.z -
+                self.current_position.z
+            )
+
+            distance = math.sqrt(
+                dx * dx +
+                dy * dy +
+                dz * dz
+            )
+
+            if distance < 2.0:
+
+                # Reached bypass waypoint
+                if not self.returning_to_path:
+
+                    logger.info(
+                        "Reached bypass waypoint, returning to path"
+                    )
+
+                    self.avoidance_waypoint = self.return_waypoint
+
+                    self.returning_to_path = True
+
+                    return None
+
+                # Reached return waypoint
+                logger.info(
+                    "Returned to original traversal path"
+                )
+ 
+                self.in_avoidance_mode = False
+
+                self.returning_to_path = False
+
+                self.current_index = self.avoidance_return_index
+
+                return None
+
+            ux = dx / distance
+            uy = dy / distance
+            uz = dz / distance
+
+            step_distance = self.curr_speed * self.dt
+
+            new_x = (
+                self.current_position.x +
+                ux * step_distance
+            )
+
+            new_y = (
+                self.current_position.y +
+                uy * step_distance
+            )
+
+            new_z = (
+                self.current_position.z +
+                uz * step_distance
+            )
+
+            new_position = Waypoint(
+                new_x,
+                new_y,
+                new_z
+            )
+
+            logger.info(
+                f"Avoidance navigation active, new position: {new_position}"
+            )
+
+            return new_position
+
+        except Exception as e:
+
+            logger.exception(
+                f"handle_avoidance_navigation(): exception: {e}"
+            )
+
+            return None
+    
+
+
+    def create_avoidance_waypoint(
+        self,
+        hazard_objects: List[FishFrameObject]
+    ) -> None:
+
+        try:
+
+            if len(hazard_objects) == 0:
+                return
+
+            if self.in_avoidance_mode:
+                return
+
+            logger.info(
+                "create_avoidance_waypoint(): STARTS"
+            )
+
+            nearest_hazard = hazard_objects[0]
+
+            # Fish-frame → world-frame conversion
+            hazard_world_x = -nearest_hazard.relative_position.y
+            hazard_world_y = -nearest_hazard.relative_position.x
+
+            logger.info(
+                f"Converted hazard position: {(hazard_world_x, hazard_world_y)}"
+            )
+
+            # Current mission direction
+            target_waypoint = self.path[self.current_index]
+
+            dx = target_waypoint.x - self.current_position.x
+            dy = target_waypoint.y - self.current_position.y
+
+            distance = math.sqrt(dx * dx + dy * dy)
+
+            if distance < 0.01:
+                return
+
+            ux = dx / distance
+            uy = dy / distance
+
+            # Perpendicular left vector
+            perp_x = -uy
+            perp_y = ux
+
+            # Decide avoidance side using hazard position
+            side = 1.0
+
+            if hazard_world_y > 0:
+                side = -1.0
+
+            bypass_x = (
+                self.current_position.x +
+                ux * 2.0 +
+                perp_x * self.avoidance_offset_distance * side
+            )
+
+            bypass_y = (
+                self.current_position.y +
+                uy * 2.0 +
+                perp_y * self.avoidance_offset_distance * side
+            )
+
+            bypass_z = self.current_position.z
+
+            self.avoidance_waypoint = Waypoint(
+                bypass_x,
+                bypass_y,
+                bypass_z
+            )
+
+            # Return point ahead on original path
+            return_x = self.current_position.x + ux * 30.0
+
+            return_y = self.current_position.y + uy * 30.0
+
+            return_z = self.current_position.z
+
+            self.return_waypoint = Waypoint(
+                return_x,
+                return_y,
+                return_z
+            )
+
+            self.in_avoidance_mode = True
+
+            self.avoidance_return_index = self.current_index
+
+            logger.info(
+                f"Created avoidance waypoint: {self.avoidance_waypoint}"
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                f"create_avoidance_waypoint(): exception: {e}"
+            )
 
 
 
@@ -401,4 +625,60 @@ class PathNavigator:
 
         except Exception as e:
             logger.error(f"Error occurred in PathNavigator -> get_linear_step_to_destination(), error: {e}")
+            raise e
+
+
+
+    def compute_hazard_avoidance_vector(self, hazards: List[FishFrameObject]) -> Tuple[float,float]:
+        try:
+            logger.info(f"compute_hazard_avoidance_vector(): STARTS, hazard objects: {hazards}")
+            
+            avoid_x = 0.0
+            avoid_y = 0.0
+
+            for hazard in hazards:
+
+                # Fish-frame → world-frame conversion
+                hazard_world_x = -hazard.relative_position.y                         # refer src/common/simulation/constants.py (line 20)
+                hazard_world_y = -hazard.relative_position.x
+                logger.info(f"After frame conversion, before pos: {hazard.relative_position}, after pos: {(hazard_world_x, hazard_world_y)}")
+
+                # Relative obstacle direction
+                hx = -hazard_world_x
+                hy = -hazard_world_y
+                
+                hazard_distance = math.sqrt(hx*hx + hy*hy)
+
+                # ignoring distanct hazard
+                if hazard_distance > self.hazard_detection_radius:
+                    logger.info(f"distance is greater than hazard detection radius, distance: {hazard_distance}")
+                    continue
+
+                # prevent divide by 0 error
+                if hazard_distance < 0.01:
+                    logger.info(f"distance is less than 0.01, distance: {hazard_distance}")
+                    hazard_distance = 0.01
+                
+                # Dynamic influence scaling, stronger repulsion when closer
+                influence = self.avoidance_strength * (1 - (hazard_distance / self.hazard_detection_radius))
+
+                # Repulsion vector
+                repel_x = hx
+                repel_y = hy
+
+                tangent_x = -hy
+                tangent_y = hx
+
+                avoid_x += (0.05 * repel_x + 1.8 * tangent_x) * influence
+                avoid_y += (0.05 * repel_y + 1.8 * tangent_y) * influence
+
+
+            avoidance_vector = (avoid_x, avoid_y)
+            logger.info(f"compute_hazard_avoidance_vector(), avoidance_vector: {avoidance_vector}")
+
+            return avoidance_vector
+
+
+        except Exception as e:
+            logger.error(f"Error occurred in PathNavigator -> compute_hazard_avoidance_vector(), error: {e}")
             raise e
