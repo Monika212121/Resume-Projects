@@ -49,19 +49,22 @@ class DecisionPipeline:
             # Creating dispatch order for Manatee machine
             dispatch_id = self.dispatch_counter
             
-            # CASE1: RESCUE ORDER -> If Fish machine is DEAD or asekd help or FAIELD/ABORTED executing mission, extract Fish machine safely to the HQ
-            if heartbeat.need_help or (heartbeat.mission_phase in [MissionPhase.FAILED, MissionPhase.ABORT]):
-                logger.info(f"INSIDE RESCUE ORDER CREATION")
-                dispatch_key = "RESCUE"
+            # CASE1: RESCUE ORDER -> If Fish machine is DEAD or asked help, RESCUE FISH 
+            if heartbeat.need_help:
+                dispatch_key = "RESCUE_FISH"
                 if dispatch_key in self.active_dispatch_keys:                                               # avoid duplicate rescue orders
-                    logger.info(f"DecisionPipeline -> run(), dispatch_id: {dispatch_id} already created RESCUE order")
+                    logger.info(f"DecisionPipeline -> run(), dispatch_id: {dispatch_id} already created RESCUE_FISH order")
+                    return (state_deltas, dispatch_order) 
+
+            # CASE2: RETURN HQ -> If Fish machine faced technical issue, mission is FAIELD/ABORTED, Manatee should return to the HQ
+            if heartbeat.mission_phase in [MissionPhase.FAILED, MissionPhase.ABORT]:
+                logger.info(f"INSIDE RETURN ORDER CREATION")
+                dispatch_key = "RETURN_HQ"
+                if dispatch_key in self.active_dispatch_keys:                                               # avoid duplicate rescue orders
+                    logger.info(f"DecisionPipeline -> run(), dispatch_id: {dispatch_id} already created RETURN_HQ order")
                     return (state_deltas, dispatch_order)                                                               # (SD, None)
                 
-                dispatch_order = DispatchOrder.create_rescue_order(
-                    dispatch_id= dispatch_id,
-                    fish_position= heartbeat.position,
-                    all_dump_points_state= self.dms.get_all_dumps()
-                )
+                dispatch_order = DispatchOrder.create_return_order(dispatch_id= dispatch_id)
 
                 self.active_dispatch_keys.add(dispatch_key)
                 self.dispatch_counter += 1
@@ -77,7 +80,7 @@ class DecisionPipeline:
                 self.processed_dump_eventIDs.add(event.event_id)
 
 
-            # CASE2: COLLECTION ORDER -> If a dump point exceeds its capacity threshold, empty the filled dump point            # refer ACTION.MD()
+            # CASE3: COLLECTION ORDER -> If a dump point exceeds its capacity threshold, empty the filled dump point            # refer ACTION.MD()
             target_dump = self.dms.get_most_urgent_filled_dump()
             if target_dump:
                 logger.info(f"DecisionPipeline -> run(), INSIDE COLLECTION ORDER CREATION, filled target dump: {target_dump}")
@@ -102,11 +105,11 @@ class DecisionPipeline:
                 return (state_deltas, dispatch_order)
             
 
-            # CASE3: RETURN ORDER -> If Fish machine returned to HQ, after successfully completing the mission
+            # CASE4: RETURN ORDER -> If Fish machine returned to HQ, after successfully completing the mission
             if heartbeat.mission_phase == MissionPhase.DONE:
                 logger.info(f"DecisionPipeline -> run(), INSIDE RETURN_HQ ORDER CREATION")
 
-                dispatch_key = f"RETURN_HQ"
+                dispatch_key = f"RETURN_HQ_SUCCESS"
 
                 if dispatch_key in self.active_dispatch_keys:                                              # avoid duplicate collection orders
                     logger.info(f"DecisionPipeline -> run(), dispatch_id: {dispatch_id} already created for RETURN_HQ")

@@ -29,6 +29,7 @@ class ObjectManager():
         self._blink_state = True
         self._last_blink_time = time.time()
 
+        self.spawned_track_ids: List[int] = []
 
 
     def exists(self, object_id: int) -> bool:
@@ -144,8 +145,14 @@ class ObjectManager():
 
 
 
-    def spawn_body(self, track_id: int, class_name: str, entity_role: EntityRole, spawn_position: Tuple[float, float, float]) -> int:
+    def spawn_body(self, track_id: int, class_name: str, entity_role: EntityRole, spawn_position: Tuple[float, float, float]) -> Optional[int]:
         try:
+            logger.info(f"ObjectManager -> spawn_body(): STARTS, track_id: {track_id}")
+            
+            # Prevent duplicate spawning for same track_id
+            if track_id in self.spawned_track_ids:
+                logger.info(f"Object already spawned for track_id: {track_id}")
+                return None
 
             # Determine appearance properties of the object to be spawned like visual, lifetime, orientation, etc.
 
@@ -165,12 +172,14 @@ class ObjectManager():
                     visual_cfg = self.visual_cfg.hazards[0]         # big rock
                 else:
                     visual_cfg = self.visual_cfg.hazards[1]         # dangerous animal
-                    lifetime = 15.0
+                    lifetime = 40.0
                     obj_orientation = p.getQuaternionFromEuler((random.uniform(0.0,1.5), random.uniform(0.0,1.5), random.uniform(0.0, 1.5)))            # providing random orientation
 
             
             # Create a new body for the object (actual spawn function)
             new_body_id = create_body(body_info= visual_cfg, position= spawn_position, orientation= obj_orientation) 
+
+            self.spawned_track_ids.append(track_id)
 
             # Update the spawned objects record
             self.object_bodyID[track_id] = new_body_id
@@ -187,7 +196,7 @@ class ObjectManager():
             if entity_role == EntityRole.NAVIGATION_HAZARD and class_name == "dangerous_animal":
                 self.hazard_body_ids.append(new_body_id)                                                # for blinking
 
-            logger.debug(f"ObjectManager -> spawn_body(): ENDS, meta_data: {self.objects_meta[track_id]}")
+            logger.info(f"ObjectManager -> spawn_body(): ENDS, meta_data: {self.objects_meta[track_id]}")
             return new_body_id
 
 

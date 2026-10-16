@@ -54,7 +54,7 @@ training:
 
 inference:
   weights: src/common/vision/model_result/V1/weights/best.pt
-  conf: 0.4
+  conf: 0.35
   imgsz: 640
   verbose: false
 
